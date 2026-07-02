@@ -9,6 +9,7 @@ import { StickerBook } from "@/components/kalqy/StickerBook";
 import { Leaderboard } from "@/components/kalqy/Leaderboard";
 import { VocabFaceQuiz } from "@/components/kalqy/VocabFaceQuiz";
 import { PointAndSpell } from "@/components/kalqy/PointAndSpell";
+import { DinoAdventureRun } from "@/components/kalqy/DinoAdventureRun";
 import { getRole, setRole as saveRole, type Role } from "@/lib/roles";
 
 const SKILL_MAP: Record<string, keyof Pick<Stats, "balance" | "coordination" | "bodyAwareness">> = {
@@ -126,6 +127,21 @@ export function App() {
                 gamesPlayed: p.gamesPlayed + 1,
                 stars: p.stars + s,
                 coordination: Math.min(100, p.coordination + 3),
+              }))
+            }
+          />
+        )}
+        {view === "dino-adventure" && (
+          <DinoAdventureRun
+            onBack={() => setView("dashboard")}
+            onComplete={({ stars }) =>
+              setStats((p) => ({
+                ...p,
+                gamesPlayed: p.gamesPlayed + 1,
+                stars: p.stars + Math.min(5, stars),
+                balance: Math.min(100, p.balance + 3),
+                coordination: Math.min(100, p.coordination + 4),
+                bodyAwareness: Math.min(100, p.bodyAwareness + 3),
               }))
             }
           />

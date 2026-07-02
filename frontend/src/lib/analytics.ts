@@ -11,7 +11,8 @@ export type GameId =
   | "endless-runner"
   | "math-adventure"
   | "vocab-face"
-  | "point-spell";
+  | "point-spell"
+  | "dino-adventure";
 
 export type EventType =
   "session-start" | "session-end" | "attempt" | "correct" | "wrong" | "movement" | "milestone";
@@ -150,6 +151,7 @@ export function getInferences(): string[] {
     "math-adventure",
     "vocab-face",
     "point-spell",
+    "dino-adventure",
   ];
   const unplayed = allGames.filter((g) => !played.has(g));
   if (unplayed.length) out.push(`Not tried yet: ${unplayed.map(labelGame).slice(0, 2).join(", ")}`);
@@ -179,6 +181,7 @@ export function labelGame(g: GameId): string {
         "math-adventure": "Math Adventure",
         "vocab-face": "Vocab Face Quiz",
         "point-spell": "Point & Spell",
+        "dino-adventure": "Dino Adventure Run",
       } as Record<string, string>
     )[g] ?? g
   );

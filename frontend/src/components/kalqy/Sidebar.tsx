@@ -20,6 +20,7 @@ export type View =
   | "math-adventure"
   | "vocab-face"
   | "point-spell"
+  | "dino-adventure"
   | "sticker-book"
   | "leaderboard";
 
@@ -51,7 +52,10 @@ const ageGroups: {
   },
   {
     label: "UKG 5–6",
-    games: [{ name: "Point & Spell 🪄", active: true, view: "point-spell" }],
+    games: [
+      { name: "Point & Spell 🪄", active: true, view: "point-spell" },
+      { name: "Dino Adventure Run 🦕", active: true, view: "dino-adventure" },
+    ],
   },
 ];
 
