@@ -13,7 +13,7 @@ kids-game/
 └── package.json
 ```
 
-## ▶️ How to run (development)
+##  How to run (development)
 
 **Step 1 — install (first time only):**
 
@@ -34,7 +34,7 @@ npm run dev
 
 (Port 3001 is just the API that the game talks to in the background — you never open it in a browser during development.)
 
-## 🚀 How to run (production)
+##  How to run (production)
 
 ```bash
 npm run build   # bundles the frontend
@@ -48,7 +48,7 @@ Then open **http://localhost:3001** — in production mode this single port serv
 | Development | `npm run dev` | http://localhost:8080 |
 | Production | `npm run build && npm start` | http://localhost:3001 |
 
-## 🎯 The games
+##  The games
 
 | Game | Age group | How you play |
 | --- | --- | --- |
