@@ -2,6 +2,8 @@
 
 Camera-controlled learning games for kids aged 3–6. Kids play by moving, pointing, and gesturing in front of the webcam — no mouse or keyboard needed.
 
+live:https://kids-game-mu.vercel.app/
+ 
 ## Project structure
 
 ```
