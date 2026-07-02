@@ -1,4 +1,4 @@
-# 🎮 Kalqy — Kids Learning Games
+#  Kalqy — Kids Learning Games
 
 Camera-controlled learning games for kids aged 3–6. Kids play by moving, pointing, and gesturing in front of the webcam — no mouse or keyboard needed.
 
@@ -59,7 +59,7 @@ Then open **http://localhost:3001** — in production mode this single port serv
 | Vocab Face Quiz | LKG 4–5 | Vocabulary quiz |
 | Point & Spell | UKG 5–6 | Point at objects, drag letters to spell — fully camera-controlled |
 
-## 🔌 Backend API (Node.js + Express)
+##  Backend API (Node.js + Express)
 
 | Method | Route | What it does |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ Then open **http://localhost:3001** — in production mode this single port serv
 
 Data is stored as JSON files in `backend/data/` (created automatically, not committed to git). To use a real database later, replace `backend/src/store.js` — nothing else needs to change.
 
-## 🛠 Tech stack
+##  Tech stack
 
 - **Frontend:** React 19, Vite, Tailwind CSS 4, MediaPipe Hands, TensorFlow.js
 - **Backend:** Node.js, Express (2 dependencies, no build step)
