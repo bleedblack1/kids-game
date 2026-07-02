@@ -1,0 +1,19 @@
+{
+  "name": "kalqy-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js REST API backend for the Kalqy kids learning games",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "NODE_ENV=production node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
