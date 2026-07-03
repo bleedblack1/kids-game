@@ -53,9 +53,12 @@ type Phase =
 
 const W = 960;
 const H = 540;
-const LANE_Y = [498, 448, 398]; // lane 0 = left/near, 2 = right/far
-const LANE_S = [1.0, 0.88, 0.78];
-const DINO_X = [180, 235, 290];
+// Temple-run style perspective: the dino runs INTO the screen.
+const HORIZON = 330; // vanishing point height on screen
+const PLAYER_Y = 505; // dino feet on screen (depth z = 0)
+const CAM = 340; // perspective strength (camera distance)
+const LANE_X = 250; // lane center offset from track middle at z = 0
+const SPAWN_Z = 1600; // how far ahead things appear
 const GRAVITY = 1900;
 const JUMP_V = 660;
 const MAX_HEARTS = 5;
@@ -162,11 +165,11 @@ interface Ent {
   cat: "ob" | "col";
   sub: string;
   lane: number;
-  x: number;
+  x: number; // depth: world units ahead of the dino (0 = at the dino)
   w: number;
   h: number;
   yOff: number; // height of item center above the lane ground
-  vx: number; // extra scroll speed (rolling logs)
+  vx: number; // extra approach speed (rolling logs)
   phase: number;
   taken?: boolean;
   takeT?: number;
@@ -206,11 +209,12 @@ interface Ambient {
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const laneAt = (f: number, arr: number[]) => {
-  const i = clamp(Math.floor(f), 0, 1);
-  return lerp(arr[i], arr[i + 1], clamp(f - i, 0, 1));
+// project a depth z (world units ahead of the dino) to screen space
+const proj = (z: number) => {
+  const t = CAM / (CAM + Math.max(z, -260));
+  return { t, y: HORIZON + (PLAYER_Y - HORIZON) * t };
 };
+const laneX = (laneF: number, t: number) => W / 2 + (laneF - 1) * LANE_X * t;
 
 function makeGameState() {
   return {
@@ -253,6 +257,10 @@ function makeGameState() {
     fireworkT: 0.4,
     celebT: 0,
     idleDist: 0,
+    cueIcon: "",
+    cueText: "",
+    cueUntil: 0,
+    finishCue: false,
   };
 }
 
@@ -741,7 +749,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
     }
 
     function spawnPattern(gs: ReturnType<typeof makeGameState>, wd: WorldDef) {
-      const x = W + 120;
+      const x = SPAWN_Z;
       const r = Math.random();
       if (r < 0.4) {
         spawnObstacle(gs, wd, x);
@@ -813,8 +821,8 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       ctx!.fillStyle = "rgba(255,255,255,0.85)";
       for (let i = 0; i < 4; i++) {
         const cx =
-          ((i * 300 + 100 - dist * 0.06 - t * 6) % (W + 260)) +
-          ((i * 300 + 100 - dist * 0.06 - t * 6) % (W + 260) < -130 ? W + 260 : 0);
+          ((i * 300 + 100 - dist * 0.01 - t * 6) % (W + 260)) +
+          ((i * 300 + 100 - dist * 0.01 - t * 6) % (W + 260) < -130 ? W + 260 : 0);
         const cy = 60 + (i % 2) * 55 + Math.sin(t * 0.4 + i) * 4;
         ctx!.beginPath();
         ctx!.arc(cx, cy, 22, 0, Math.PI * 2);
@@ -824,7 +832,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         ctx!.fill();
       }
       // a friendly bird
-      const bx = W - ((dist * 0.35 + t * 60) % (W + 400));
+      const bx = W - ((dist * 0.03 + t * 60) % (W + 400));
       const by = 120 + Math.sin(t * 2) * 12;
       ctx!.strokeStyle = "rgba(70,70,90,0.7)";
       ctx!.lineWidth = 3;
@@ -838,7 +846,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
 
     function drawFar(wd: WorldDef, dist: number) {
       const per = 340;
-      const off = (dist * 0.15) % per;
+      const off = (dist * 0.02) % per;
       ctx!.fillStyle = wd.far;
       for (let i = -1; i < W / per + 2; i++) {
         const x = i * per - off;
@@ -880,115 +888,160 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
     }
 
     function drawMid(wd: WorldDef, dist: number, t: number) {
-      const per = 250;
-      const off = (dist * 0.45) % per;
-      for (let i = -1; i < W / per + 1; i++) {
-        const x = i * per - off + 60;
-        const sway = Math.sin(t * 1.4 + i) * 3;
+      // roadside decorations streaming toward the camera along the track sides
+      const per = 260; // depth spacing between decorations
+      for (let i = 9; i >= 0; i--) {
+        const idx = Math.floor(dist / per) + i;
+        const z = idx * per - dist;
+        if (z < -120 || z > 2300) continue;
+        const p = proj(z);
+        const side = idx % 2 === 0 ? -1 : 1;
+        const x = W / 2 + side * 430 * p.t;
+        const sway = Math.sin(t * 1.4 + idx) * 3;
+        ctx!.save();
+        ctx!.globalAlpha = clamp((2300 - z) / 500, 0, 1);
+        ctx!.translate(x, p.y);
+        ctx!.scale(p.t, p.t);
         if (wd.deco === "tree" || wd.deco === "palm") {
           ctx!.fillStyle = "#8a5a2b";
-          rr(x - 7, 268, 14, 74, 6);
+          rr(-7, -74, 14, 74, 6);
           ctx!.fill();
           ctx!.fillStyle = wd.mid;
           ctx!.beginPath();
-          ctx!.arc(x + sway, 250, 34, 0, Math.PI * 2);
-          ctx!.arc(x - 26 + sway, 272, 26, 0, Math.PI * 2);
-          ctx!.arc(x + 26 + sway, 272, 26, 0, Math.PI * 2);
+          ctx!.arc(sway, -92, 34, 0, Math.PI * 2);
+          ctx!.arc(-26 + sway, -70, 26, 0, Math.PI * 2);
+          ctx!.arc(26 + sway, -70, 26, 0, Math.PI * 2);
           ctx!.fill();
         } else if (wd.deco === "volcano") {
           ctx!.fillStyle = wd.mid;
           ctx!.beginPath();
-          ctx!.moveTo(x - 60, 342);
-          ctx!.lineTo(x, 240);
-          ctx!.lineTo(x + 60, 342);
+          ctx!.moveTo(-60, 0);
+          ctx!.lineTo(0, -102);
+          ctx!.lineTo(60, 0);
           ctx!.closePath();
           ctx!.fill();
           ctx!.fillStyle = "rgba(255,112,67,0.8)";
           ctx!.beginPath();
-          ctx!.ellipse(x, 242, 13, 5, 0, 0, Math.PI * 2);
+          ctx!.ellipse(0, -100, 13, 5, 0, 0, Math.PI * 2);
           ctx!.fill();
           // smoke puff
           ctx!.fillStyle = "rgba(120,120,120,0.35)";
           ctx!.beginPath();
           ctx!.arc(
-            x + Math.sin(t + i) * 6,
-            216 - ((t * 12 + i * 20) % 40),
-            10 + ((t * 12 + i * 20) % 40) / 5,
+            Math.sin(t + idx) * 6,
+            -126 - ((t * 12 + idx * 20) % 40),
+            10 + ((t * 12 + idx * 20) % 40) / 5,
             0,
             Math.PI * 2,
           );
           ctx!.fill();
         } else if (wd.deco === "pine") {
           ctx!.fillStyle = "#6d4c41";
-          rr(x - 5, 300, 10, 42, 4);
+          rr(-5, -42, 10, 42, 4);
           ctx!.fill();
           ctx!.fillStyle = wd.mid;
           for (let k = 0; k < 3; k++) {
             ctx!.beginPath();
-            ctx!.moveTo(x - 34 + k * 7, 312 - k * 26);
-            ctx!.lineTo(x + sway * 0.4, 258 - k * 26);
-            ctx!.lineTo(x + 34 - k * 7, 312 - k * 26);
+            ctx!.moveTo(-34 + k * 7, -30 - k * 26);
+            ctx!.lineTo(sway * 0.4, -84 - k * 26);
+            ctx!.lineTo(34 - k * 7, -30 - k * 26);
             ctx!.closePath();
             ctx!.fill();
           }
           ctx!.fillStyle = "rgba(255,255,255,0.85)";
           ctx!.beginPath();
-          ctx!.ellipse(x, 234, 12, 5, 0, 0, Math.PI * 2);
+          ctx!.ellipse(0, -108, 12, 5, 0, 0, Math.PI * 2);
           ctx!.fill();
         } else if (wd.deco === "candy") {
-          if (i % 2 === 0) {
+          if (idx % 4 < 2) {
             ctx!.strokeStyle = "#ffffff";
             ctx!.lineWidth = 10;
             ctx!.beginPath();
-            ctx!.moveTo(x, 342);
-            ctx!.lineTo(x, 260);
+            ctx!.moveTo(0, 0);
+            ctx!.lineTo(0, -82);
             ctx!.stroke();
             ctx!.strokeStyle = "#ff6b9d";
             ctx!.setLineDash([10, 12]);
             ctx!.beginPath();
-            ctx!.moveTo(x, 342);
-            ctx!.lineTo(x, 260);
+            ctx!.moveTo(0, 0);
+            ctx!.lineTo(0, -82);
             ctx!.stroke();
             ctx!.setLineDash([]);
             ctx!.fillStyle = wd.mid;
             ctx!.beginPath();
-            ctx!.arc(x + sway, 244, 26, 0, Math.PI * 2);
+            ctx!.arc(sway, -98, 26, 0, Math.PI * 2);
             ctx!.fill();
             ctx!.strokeStyle = "rgba(255,255,255,0.8)";
             ctx!.lineWidth = 4;
             ctx!.beginPath();
-            ctx!.arc(x + sway, 244, 16, 0, Math.PI * 1.5);
+            ctx!.arc(sway, -98, 16, 0, Math.PI * 1.5);
             ctx!.stroke();
           } else {
             ctx!.fillStyle = "#a2e8dd";
             ctx!.beginPath();
-            ctx!.arc(x, 300, 24, Math.PI, 0);
+            ctx!.arc(0, -42, 24, Math.PI, 0);
             ctx!.fill();
-            rr(x - 24, 298, 48, 44, 6);
+            rr(-24, -44, 48, 44, 6);
             ctx!.fill();
             ctx!.fillStyle = "#ffffff";
-            rr(x - 24, 298, 48, 10, 4);
+            rr(-24, -44, 48, 10, 4);
             ctx!.fill();
           }
         }
+        ctx!.restore();
       }
     }
 
     function drawGround(wd: WorldDef, dist: number) {
-      ctx!.fillStyle = wd.ground;
-      ctx!.fillRect(0, 356, W, H - 356);
+      // grass on both sides of the track
       ctx!.fillStyle = wd.groundTop;
-      ctx!.fillRect(0, 342, W, 26);
-      // lane hint stripes scrolling
-      ctx!.fillStyle = "rgba(255,255,255,0.14)";
-      for (let l = 0; l < 3; l++) {
-        const y = LANE_Y[l];
-        const per = 130;
-        const off = (dist * (0.8 + l * 0.1)) % per;
-        for (let i = -1; i < W / per + 1; i++) {
-          rr(i * per - off, y + 8, 56, 5, 3);
-          ctx!.fill();
-        }
+      ctx!.fillRect(0, HORIZON, W, H - HORIZON);
+      const vpx = W / 2;
+      const tB = (H - HORIZON) / (PLAYER_Y - HORIZON); // projection t at the bottom edge
+      // dirt track converging to the vanishing point
+      ctx!.fillStyle = wd.ground;
+      ctx!.beginPath();
+      ctx!.moveTo(vpx, HORIZON);
+      ctx!.lineTo(vpx - 385 * tB, H);
+      ctx!.lineTo(vpx + 385 * tB, H);
+      ctx!.closePath();
+      ctx!.fill();
+      // track edges
+      ctx!.strokeStyle = "rgba(0,0,0,0.18)";
+      ctx!.lineWidth = 5;
+      for (const off of [-385, 385]) {
+        ctx!.beginPath();
+        ctx!.moveTo(vpx, HORIZON);
+        ctx!.lineTo(vpx + off * tB, H);
+        ctx!.stroke();
+      }
+      // lane divider lines
+      ctx!.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx!.lineWidth = 4;
+      for (const off of [-125, 125]) {
+        ctx!.beginPath();
+        ctx!.moveTo(vpx, HORIZON);
+        ctx!.lineTo(vpx + off * tB, H);
+        ctx!.stroke();
+      }
+      // transverse stripes rushing toward the camera
+      ctx!.fillStyle = "#ffffff";
+      const per = 130;
+      for (let i = 0; i < 16; i++) {
+        const z = i * per - (dist % per);
+        const a = proj(z);
+        const b = proj(z + 24);
+        if (a.y <= HORIZON + 2) continue;
+        ctx!.save();
+        ctx!.globalAlpha = clamp(a.t, 0.15, 1) * 0.16;
+        ctx!.beginPath();
+        ctx!.moveTo(vpx - 370 * a.t, a.y);
+        ctx!.lineTo(vpx + 370 * a.t, a.y);
+        ctx!.lineTo(vpx + 370 * b.t, b.y);
+        ctx!.lineTo(vpx - 370 * b.t, b.y);
+        ctx!.closePath();
+        ctx!.fill();
+        ctx!.restore();
       }
     }
 
@@ -997,17 +1050,17 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         gs.amb.push({
           x: rnd(0, W),
           y: wd.particle === "ember" ? rnd(H * 0.5, H) : rnd(-20, H * 0.5),
-          vx: rnd(-30, -12),
+          vx: rnd(-16, 16),
           vy: wd.particle === "ember" ? rnd(-50, -25) : rnd(18, 48),
           size: rnd(3, 7),
           seed: rnd(0, 7),
         });
       }
       for (const p of gs.amb) {
-        p.x += (p.vx - 14) * dt;
+        p.x += p.vx * dt;
         p.y += p.vy * dt;
-        if (p.y > H + 20 || p.y < -30 || p.x < -20) {
-          p.x = rnd(0, W + 60);
+        if (p.y > H + 20 || p.y < -30 || p.x < -30 || p.x > W + 30) {
+          p.x = rnd(0, W);
           p.y = wd.particle === "ember" ? H + 10 : -15;
         }
         const wob = Math.sin(gs.t * 2 + p.seed) * 8;
@@ -1062,8 +1115,10 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         happy: boolean;
         celebrate: boolean;
         alpha: number;
+        lean: number;
       },
     ) {
+      // back view — the dino runs away from the camera, into the screen
       ctx!.save();
       ctx!.globalAlpha = o.alpha;
       ctx!.translate(x, groundY);
@@ -1071,161 +1126,146 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       // shadow
       ctx!.fillStyle = "rgba(0,0,0,0.18)";
       ctx!.beginPath();
-      ctx!.ellipse(0, 4, 40 * clamp(1 - o.y / 380, 0.45, 1), 8, 0, 0, Math.PI * 2);
+      ctx!.ellipse(0, 4, 34 * clamp(1 - o.y / 380, 0.45, 1), 8, 0, 0, Math.PI * 2);
       ctx!.fill();
       ctx!.translate(0, -o.y);
       if (o.celebrate) ctx!.translate(0, -Math.abs(Math.sin(o.t * 6)) * 22);
-      if (o.duck) {
-        ctx!.translate(0, 0);
-        ctx!.scale(1.12, 0.6);
-      }
+      ctx!.rotate(o.lean * 0.14); // bank into lane changes
+      if (o.duck) ctx!.scale(1.15, 0.6);
       const outline = "rgba(40,30,20,0.35)";
       const darker = ch.spikes;
-      // legs
       const ph = o.running ? o.t * 13 : o.t * 2;
-      ctx!.strokeStyle = darker;
-      ctx!.lineWidth = 11;
-      ctx!.lineCap = "round";
-      const legSwing = o.running ? 14 : 3;
-      ctx!.beginPath();
-      ctx!.moveTo(-10, -26);
-      ctx!.lineTo(-10 + Math.sin(ph) * legSwing, -2);
-      ctx!.stroke();
-      ctx!.beginPath();
-      ctx!.moveTo(12, -26);
-      ctx!.lineTo(12 + Math.sin(ph + Math.PI) * legSwing, -2);
-      ctx!.stroke();
-      // tail
+      // tail dragging toward the camera, swishing with the run
+      const swish = Math.sin(ph * 0.5) * 12;
       ctx!.fillStyle = ch.body;
       ctx!.beginPath();
-      ctx!.moveTo(-24, -44);
-      ctx!.quadraticCurveTo(-66, -52 + Math.sin(o.t * 3) * 6, -60, -28);
-      ctx!.quadraticCurveTo(-44, -22, -22, -28);
+      ctx!.moveTo(-10, -34);
+      ctx!.quadraticCurveTo(swish - 6, -10, swish + 12, 8);
+      ctx!.quadraticCurveTo(swish + 24, 2, 12, -30);
       ctx!.closePath();
       ctx!.fill();
       ctx!.strokeStyle = outline;
       ctx!.lineWidth = 3;
       ctx!.stroke();
-      // body
+      // legs — feet kick up alternately as seen from behind
+      ctx!.strokeStyle = darker;
+      ctx!.lineWidth = 11;
+      ctx!.lineCap = "round";
+      const kickL = o.running ? Math.max(0, Math.sin(ph)) * 16 : 0;
+      const kickR = o.running ? Math.max(0, Math.sin(ph + Math.PI)) * 16 : 0;
       ctx!.beginPath();
-      ctx!.ellipse(0, -34, 33, 27, 0, 0, Math.PI * 2);
+      ctx!.moveTo(-13, -28);
+      ctx!.lineTo(-15, -2 - kickL);
+      ctx!.stroke();
+      ctx!.beginPath();
+      ctx!.moveTo(13, -28);
+      ctx!.lineTo(15, -2 - kickR);
+      ctx!.stroke();
+      // body (back view)
+      ctx!.beginPath();
+      ctx!.ellipse(0, -44, 30, 28, 0, 0, Math.PI * 2);
       ctx!.fillStyle = ch.body;
       ctx!.fill();
       ctx!.stroke();
-      // belly
+      // little arms at the sides
+      ctx!.strokeStyle = darker;
+      ctx!.lineWidth = 7;
+      const armSwing = o.running ? Math.sin(ph) * 5 : 0;
       ctx!.beginPath();
-      ctx!.ellipse(6, -26, 19, 15, 0, 0, Math.PI * 2);
-      ctx!.fillStyle = ch.belly;
-      ctx!.fill();
-      // back spikes
+      ctx!.moveTo(-26, -48);
+      if (o.celebrate) ctx!.lineTo(-34, -70 - Math.sin(o.t * 8) * 5);
+      else ctx!.lineTo(-33, -38 + armSwing);
+      ctx!.stroke();
+      ctx!.beginPath();
+      ctx!.moveTo(26, -48);
+      if (o.celebrate) ctx!.lineTo(34, -70 + Math.sin(o.t * 8) * 5);
+      else ctx!.lineTo(33, -38 - armSwing);
+      ctx!.stroke();
+      // spikes running down the spine
       ctx!.fillStyle = ch.spikes;
       for (let i = 0; i < 3; i++) {
-        const sx = -26 + i * 13;
-        const sy = -52 - i * 4;
+        const sy = -62 + i * 13;
         ctx!.beginPath();
-        ctx!.moveTo(sx - 7, sy + 6);
-        ctx!.quadraticCurveTo(sx, sy - 12, sx + 7, sy + 6);
+        ctx!.moveTo(-7, sy + 6);
+        ctx!.quadraticCurveTo(0, sy - 10, 7, sy + 6);
         ctx!.closePath();
         ctx!.fill();
       }
-      // head
+      // head, slightly turned so an eye and the snout peek out
       const bob = o.running ? Math.sin(o.t * 13) * 2 : Math.sin(o.t * 1.5) * 1.5;
       ctx!.save();
-      ctx!.translate(24, -62 + bob + (o.duck ? 10 : 0));
+      ctx!.translate(4 + o.lean * 6, -78 + bob + (o.duck ? 10 : 0));
       ctx!.beginPath();
-      ctx!.arc(0, 0, 21, 0, Math.PI * 2);
+      ctx!.arc(0, 0, 20, 0, Math.PI * 2);
       ctx!.fillStyle = ch.body;
       ctx!.fill();
       ctx!.strokeStyle = outline;
       ctx!.stroke();
       // snout
       ctx!.beginPath();
-      ctx!.ellipse(15, 6, 13, 9, 0, 0, Math.PI * 2);
+      ctx!.ellipse(15, 5, 10, 7, 0, 0, Math.PI * 2);
       ctx!.fill();
       ctx!.stroke();
       ctx!.fillStyle = "rgba(40,30,20,0.6)";
       ctx!.beginPath();
-      ctx!.arc(20, 3, 1.8, 0, Math.PI * 2);
+      ctx!.arc(21, 3, 1.6, 0, Math.PI * 2);
       ctx!.fill();
-      // arms up when celebrating / hands-up cue
-      if (o.celebrate) {
-        ctx!.strokeStyle = ch.body;
-        ctx!.lineWidth = 8;
-        ctx!.beginPath();
-        ctx!.moveTo(-14, 16);
-        ctx!.lineTo(-26, -2 - Math.sin(o.t * 8) * 5);
-        ctx!.stroke();
-      }
-      // eye
+      // eye near the right edge (3/4 back view)
       const blink = o.t % 3.6 < 0.12 && !o.hurt;
       if (o.hurt) {
         ctx!.strokeStyle = "#3a2a1a";
         ctx!.lineWidth = 3;
         ctx!.beginPath();
-        ctx!.moveTo(1, -8);
-        ctx!.lineTo(11, 0);
-        ctx!.moveTo(11, -8);
-        ctx!.lineTo(1, 0);
+        ctx!.moveTo(7, -8);
+        ctx!.lineTo(15, -1);
+        ctx!.moveTo(15, -8);
+        ctx!.lineTo(7, -1);
         ctx!.stroke();
       } else if (o.happy || o.celebrate) {
         ctx!.strokeStyle = "#3a2a1a";
         ctx!.lineWidth = 3;
         ctx!.beginPath();
-        ctx!.arc(6, -4, 6, Math.PI, 0);
+        ctx!.arc(11, -4, 5, Math.PI, 0);
         ctx!.stroke();
       } else if (blink) {
         ctx!.strokeStyle = "#3a2a1a";
         ctx!.lineWidth = 3;
         ctx!.beginPath();
-        ctx!.moveTo(0, -4);
-        ctx!.lineTo(12, -4);
+        ctx!.moveTo(6, -4);
+        ctx!.lineTo(16, -4);
         ctx!.stroke();
       } else {
         ctx!.fillStyle = "#ffffff";
         ctx!.beginPath();
-        ctx!.arc(6, -4, 7.5, 0, Math.PI * 2);
+        ctx!.arc(11, -4, 6, 0, Math.PI * 2);
         ctx!.fill();
         ctx!.fillStyle = "#2b2b2b";
         ctx!.beginPath();
-        ctx!.arc(8, -4, 4, 0, Math.PI * 2);
+        ctx!.arc(13, -4, 3.4, 0, Math.PI * 2);
         ctx!.fill();
         ctx!.fillStyle = "#ffffff";
         ctx!.beginPath();
-        ctx!.arc(9.5, -5.5, 1.4, 0, Math.PI * 2);
+        ctx!.arc(14.2, -5.3, 1.2, 0, Math.PI * 2);
         ctx!.fill();
       }
-      // mouth
-      ctx!.strokeStyle = "#3a2a1a";
-      ctx!.lineWidth = 2.5;
-      ctx!.beginPath();
-      if (o.hurt) ctx!.arc(13, 12, 5, Math.PI, 0);
-      else if (o.happy || o.celebrate) ctx!.arc(12, 8, 7, 0.1, Math.PI - 0.4);
-      else ctx!.arc(13, 8, 5, 0.2, Math.PI * 0.7);
-      ctx!.stroke();
       // cheek
       ctx!.fillStyle = "rgba(255,120,140,0.35)";
       ctx!.beginPath();
-      ctx!.arc(-4, 8, 4.5, 0, Math.PI * 2);
+      ctx!.arc(6, 7, 4, 0, Math.PI * 2);
       ctx!.fill();
       ctx!.restore();
-      // tiny arm
-      ctx!.strokeStyle = darker;
-      ctx!.lineWidth = 7;
-      ctx!.beginPath();
-      ctx!.moveTo(14, -40);
-      if (o.celebrate) ctx!.lineTo(22, -58 - Math.sin(o.t * 8) * 5);
-      else ctx!.lineTo(24, -34 + (o.running ? Math.sin(o.t * 13) * 4 : 0));
-      ctx!.stroke();
       ctx!.restore();
     }
 
     // ---------- obstacles & collectibles ----------
 
     function drawEnt(e: Ent, wd: WorldDef, t: number) {
-      const s = LANE_S[e.lane];
-      const gy = LANE_Y[e.lane];
+      const p = proj(e.x);
+      const s = p.t;
       ctx!.save();
-      ctx!.translate(e.x, gy);
+      // fade in as things appear near the horizon
+      ctx!.globalAlpha = clamp((SPAWN_Z - 40 - e.x) / 240, 0, 1);
+      ctx!.translate(laneX(e.lane, p.t), p.y);
       ctx!.scale(s, s);
       const outline = "rgba(40,30,20,0.3)";
       ctx!.lineWidth = 3;
@@ -1248,24 +1288,30 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
           ctx!.arc(10, -22, 4, 0, Math.PI * 2);
           ctx!.fill();
         } else if (e.sub === "log") {
-          const roll = e.x * 0.05 + e.phase;
-          ctx!.translate(0, -25);
-          ctx!.rotate(roll);
+          // log rolling toward the camera — bark stripes sweep down its face
+          const roll = -e.x * 0.12 + e.phase * 10;
+          ctx!.translate(0, -22);
           ctx!.fillStyle = "#8d6e63";
-          ctx!.beginPath();
-          ctx!.arc(0, 0, 25, 0, Math.PI * 2);
+          rr(-50, -22, 100, 44, 22);
           ctx!.fill();
           ctx!.stroke();
+          ctx!.save();
+          rr(-50, -22, 100, 44, 22);
+          ctx!.clip();
+          ctx!.fillStyle = "rgba(93,58,42,0.5)";
+          for (let k = 0; k < 3; k++) {
+            const yy = -22 + ((((roll + k * 15) % 44) + 44) % 44);
+            rr(-46, yy - 2.5, 92, 5, 3);
+            ctx!.fill();
+          }
+          ctx!.restore();
           ctx!.strokeStyle = "#6d4c41";
           ctx!.lineWidth = 3;
-          for (const r of [8, 16]) {
-            ctx!.beginPath();
-            ctx!.arc(0, 0, r, 0, Math.PI * 2);
-            ctx!.stroke();
-          }
           ctx!.beginPath();
-          ctx!.moveTo(0, 0);
-          ctx!.lineTo(22, 0);
+          ctx!.ellipse(36, 0, 9, 16, 0, 0, Math.PI * 2);
+          ctx!.stroke();
+          ctx!.beginPath();
+          ctx!.ellipse(36, 0, 4, 8, 0, 0, Math.PI * 2);
           ctx!.stroke();
         } else if (e.sub === "tree") {
           ctx!.fillStyle = "#8a5a2b";
@@ -1383,7 +1429,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         // collectibles
         const fly = e.taken ? clamp((e.takeT ?? 0) / 0.35, 0, 1) : 0;
         ctx!.translate(0, -e.yOff - Math.sin(t * 3 + e.phase) * 5);
-        ctx!.globalAlpha = 1 - fly * 0.6;
+        ctx!.globalAlpha *= 1 - fly * 0.6;
         ctx!.scale(1 - fly * 0.5, 1 - fly * 0.5);
         if (e.sub === "coin") {
           const spin = Math.abs(Math.sin(t * 4 + e.phase));
@@ -1467,6 +1513,47 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       ctx!.restore();
     }
 
+    // ---------- finish gate ----------
+
+    function drawFinishGate(z: number) {
+      const p = proj(z);
+      ctx!.save();
+      ctx!.globalAlpha = clamp((SPAWN_Z + 200 - z) / 300, 0, 1);
+      ctx!.translate(W / 2, p.y);
+      ctx!.scale(p.t, p.t);
+      // striped poles
+      for (const px of [-400, 384]) {
+        ctx!.fillStyle = "#e53e3e";
+        rr(px, -170, 16, 170, 6);
+        ctx!.fill();
+        ctx!.fillStyle = "#ffffff";
+        for (let k = 0; k < 4; k++) {
+          ctx!.fillRect(px, -170 + 21 + k * 42, 16, 21);
+        }
+      }
+      // banner
+      ctx!.fillStyle = "#ffffff";
+      rr(-408, -224, 816, 62, 14);
+      ctx!.fill();
+      ctx!.strokeStyle = "#e53e3e";
+      ctx!.lineWidth = 5;
+      ctx!.stroke();
+      // checkered strip along the bottom of the banner
+      ctx!.fillStyle = "#2b2b2b";
+      for (let k = 0; k < 34; k += 2) {
+        ctx!.fillRect(-408 + k * 24, -176, 24, 14);
+      }
+      // text
+      ctx!.fillStyle = "#e53e3e";
+      ctx!.font = "900 40px system-ui, sans-serif";
+      ctx!.textAlign = "center";
+      ctx!.fillText("FINISH", 0, -184);
+      ctx!.font = "32px system-ui, sans-serif";
+      ctx!.fillText("🏁", -340, -184);
+      ctx!.fillText("🏁", 340, -184);
+      ctx!.restore();
+    }
+
     // ---------- particles / floats ----------
 
     function stepEffects(gs: ReturnType<typeof makeGameState>, dt: number) {
@@ -1542,15 +1629,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
           gs.grounded = false;
           gs.jumps++;
           sfx.jump();
-          spawnParts(
-            gs,
-            laneAt(gs.laneF, DINO_X),
-            laneAt(gs.laneF, LANE_Y),
-            6,
-            ["#d7ccc8", "#efebe9"],
-            90,
-            -60,
-          );
+          spawnParts(gs, laneX(gs.laneF, 1), PLAYER_Y, 6, ["#d7ccc8", "#efebe9"], 90, -60);
         }
       }
       gs.prevJump = jumpTotal;
@@ -1570,15 +1649,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
           gs.y = 0;
           gs.vy = 0;
           gs.grounded = true;
-          spawnParts(
-            gs,
-            laneAt(gs.laneF, DINO_X),
-            laneAt(gs.laneF, LANE_Y),
-            5,
-            ["#d7ccc8"],
-            80,
-            -50,
-          );
+          spawnParts(gs, laneX(gs.laneF, 1), PLAYER_Y, 5, ["#d7ccc8"], 80, -50);
         }
       }
 
@@ -1597,7 +1668,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
           cat: "col",
           sub: "star",
           lane: 1,
-          x: W + 120,
+          x: SPAWN_Z,
           w: 60,
           h: 60,
           yOff: 205,
@@ -1607,12 +1678,10 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         gs.starTimer = 11 + rnd(0, 7);
       }
 
-      const dinoX = laneAt(gs.laneF, DINO_X);
-
-      // entities
+      // entities approach the dino (depth 0) from the horizon
       for (let i = gs.ents.length - 1; i >= 0; i--) {
         const e = gs.ents[i];
-        e.x -= adv * (0.9 + LANE_S[e.lane] * 0.1) + e.vx * dt;
+        e.x -= adv + e.vx * dt;
         if (e.taken) {
           e.takeT = (e.takeT ?? 0) + dt;
           if (e.takeT > 0.35) gs.ents.splice(i, 1);
@@ -1624,7 +1693,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         }
 
         const laneMatch = Math.abs(gs.laneF - e.lane) < 0.45;
-        const dx = Math.abs(e.x - dinoX);
+        const dx = Math.abs(e.x);
 
         if (e.cat === "ob") {
           if (!laneMatch || gs.t < gs.invulnUntil) continue;
@@ -1640,7 +1709,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
             gs.mudUntil = gs.t + 1.4;
             sfx.mud();
             voiceCue(gs, "Sticky mud! Jump out!", 1.8);
-            spawnParts(gs, dinoX, laneAt(gs.laneF, LANE_Y), 10, [wd.goo], 120, -120);
+            spawnParts(gs, laneX(gs.laneF, 1), PLAYER_Y, 10, [wd.goo], 120, -120);
           } else if (hitNow) {
             gs.hearts--;
             gs.hits++;
@@ -1650,15 +1719,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
             if (e.sub === "river") sfx.splash();
             else sfx.hit();
             say(gs.hearts > 0 ? "Ouch! Be careful!" : "Oh no!");
-            spawnParts(
-              gs,
-              dinoX,
-              laneAt(gs.laneF, LANE_Y) - 40,
-              14,
-              ["#ff8a80", "#ffd180"],
-              200,
-              -180,
-            );
+            spawnParts(gs, laneX(gs.laneF, 1), PLAYER_Y - 40, 14, ["#ff8a80", "#ffd180"], 200, -180);
             if (gs.hearts <= 0) {
               gameOver();
               return;
@@ -1676,8 +1737,9 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
               gs.streak++;
               gs.happyUntil = gs.t + 0.7;
               sfx.star();
-              float(gs, e.x, LANE_Y[e.lane] - e.yOff, "+⭐", "#ffb703");
-              burstAt(gs, e.x, LANE_Y[e.lane] - e.yOff);
+              const sp = proj(e.x);
+              float(gs, laneX(e.lane, sp.t), sp.y - e.yOff * sp.t, "+⭐", "#ffb703");
+              burstAt(gs, laneX(e.lane, sp.t), sp.y - e.yOff * sp.t);
             }
             continue;
           }
@@ -1688,24 +1750,27 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
           e.takeT = 0;
           gs.streak++;
           gs.happyUntil = gs.t + 0.6;
+          const cp = proj(e.x);
+          const fx = laneX(e.lane, cp.t);
+          const fy = cp.y - (e.yOff + 20) * cp.t;
           if (e.sub === "coin") {
             gs.coins++;
             gs.score += 10;
             gs.meter = Math.min(100, gs.meter + 8);
             sfx.coin();
-            float(gs, e.x, LANE_Y[e.lane] - e.yOff - 20, "+10", "#f59e0b");
+            float(gs, fx, fy, "+10", "#f59e0b");
           } else if (e.sub === "egg") {
             gs.eggs++;
             gs.score += 25;
             gs.meter = Math.min(100, gs.meter + 14);
             sfx.egg();
-            float(gs, e.x, LANE_Y[e.lane] - e.yOff - 20, "+🥚", "#0891b2");
+            float(gs, fx, fy, "+🥚", "#0891b2");
           } else if (e.sub === "gem") {
             gs.gems++;
             gs.score += 50;
             gs.meter = Math.min(100, gs.meter + 20);
             sfx.gem();
-            float(gs, e.x, LANE_Y[e.lane] - e.yOff - 20, "+50", "#a855f7");
+            float(gs, fx, fy, "+50", "#a855f7");
           }
           if (gs.meter >= 100) {
             gs.meter = 0;
@@ -1731,17 +1796,20 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       if (gs.t > gs.voiceCd) {
         for (const e of gs.ents) {
           if (e.warned || e.taken) continue;
-          const eta = (e.x - dinoX) / gs.speed;
+          const eta = e.x / gs.speed;
           if (eta < 0.35 || eta > 0.95) continue;
           if (e.cat === "col" && e.sub === "star") {
             e.warned = true;
             voiceCue(gs, "Hands up for the star!", 2.4);
+            setCue(gs, "🙌", "HANDS UP!");
             break;
           }
           if (e.cat !== "ob" || Math.round(gs.laneF) !== e.lane) continue;
           e.warned = true;
-          if (e.sub === "ptero") voiceCue(gs, "Duck!", 2.2);
-          else if (e.sub === "sleepy") {
+          if (e.sub === "ptero") {
+            voiceCue(gs, "Duck!", 2.2);
+            setCue(gs, "⬇️", "DUCK!");
+          } else if (e.sub === "sleepy") {
             const dir =
               e.lane === 0
                 ? "right"
@@ -1751,8 +1819,14 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
                     ? "left"
                     : "right";
             voiceCue(gs, `Move ${dir}!`, 2.2);
-          } else if (e.sub === "mud") voiceCue(gs, "Jump over the mud!", 2.2);
-          else voiceCue(gs, "Jump!", 2.2);
+            setCue(gs, dir === "left" ? "⬅️" : "➡️", `MOVE ${dir.toUpperCase()}!`);
+          } else if (e.sub === "mud") {
+            voiceCue(gs, "Jump over the mud!", 2.2);
+            setCue(gs, "⬆️", "JUMP!");
+          } else {
+            voiceCue(gs, "Jump!", 2.2);
+            setCue(gs, "⬆️", "JUMP!");
+          }
           break;
         }
       }
@@ -1771,6 +1845,13 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
         } else gs.lostSince = 0;
       }
 
+      // finish line ahead
+      if (!gs.finishCue && gs.dist / gs.levelLen > 0.86) {
+        gs.finishCue = true;
+        voiceCue(gs, "The finish line is ahead!", 3);
+        setCue(gs, "🏁", "FINISH AHEAD!");
+      }
+
       // level complete
       if (gs.dist >= gs.levelLen) finishLevel();
     }
@@ -1778,6 +1859,13 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
     function voiceCue(gs: ReturnType<typeof makeGameState>, text: string, cd: number) {
       gs.voiceCd = gs.t + cd;
       voice(text);
+    }
+
+    // big on-screen action prompt shown alongside the coach's voice
+    function setCue(gs: ReturnType<typeof makeGameState>, icon: string, text: string) {
+      gs.cueIcon = icon;
+      gs.cueText = text;
+      gs.cueUntil = gs.t + 1.5;
     }
 
     // ---------- main loop ----------
@@ -1803,30 +1891,33 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       // render
       drawSky(wd, gs.t, scrollDist);
       drawFar(wd, scrollDist);
-      drawMid(wd, scrollDist, gs.t);
       drawGround(wd, scrollDist);
+      drawMid(wd, scrollDist, gs.t);
       drawAmbient(gs, wd, dt);
 
-      // draw entities back-to-front (far lane first)
-      for (let l = 2; l >= 0; l--) {
-        for (const e of g.current.ents) if (e.lane === l && e.sub !== "star") drawEnt(e, wd, gs.t);
-        if (clamp(Math.round(gs.laneF), 0, 2) === l) {
-          const scale = laneAt(gs.laneF, LANE_S);
-          const blink = gs.t < gs.invulnUntil && Math.floor(gs.t * 10) % 2 === 0;
-          drawDino(laneAt(gs.laneF, DINO_X), laneAt(gs.laneF, LANE_Y), scale, charRef.current, {
-            t: gs.t,
-            y: gs.y,
-            duck: gs.ducking,
-            running: playing,
-            hurt: gs.t < gs.hurtUntil,
-            happy: gs.t < gs.happyUntil,
-            celebrate: ph === "complete",
-            alpha: blink ? 0.35 : 1,
-          });
-        }
-      }
+      // finish gate rises over the horizon near the end of the level
+      const zGate = gs.levelLen - gs.dist;
+      if (gs.dist > 0 && zGate < SPAWN_Z + 240 && zGate > -240) drawFinishGate(zGate);
+
+      // draw entities far-to-near; the dino sits at depth 0
+      const sorted = [...gs.ents].sort((a, b) => b.x - a.x);
+      for (const e of sorted) if (e.x >= 0 && e.sub !== "star") drawEnt(e, wd, gs.t);
+      const blink = gs.t < gs.invulnUntil && Math.floor(gs.t * 10) % 2 === 0;
+      drawDino(laneX(gs.laneF, 1), PLAYER_Y, 1, charRef.current, {
+        t: gs.t,
+        y: gs.y,
+        duck: gs.ducking,
+        running: playing,
+        hurt: gs.t < gs.hurtUntil,
+        happy: gs.t < gs.happyUntil,
+        celebrate: ph === "complete",
+        alpha: blink ? 0.35 : 1,
+        lean: clamp(gs.targetLane - gs.laneF, -1, 1),
+      });
+      // entities that already passed the dino zoom by the camera
+      for (const e of sorted) if (e.x < 0 && e.sub !== "star") drawEnt(e, wd, gs.t);
       // stars float above everything
-      for (const e of g.current.ents) if (e.sub === "star") drawEnt(e, wd, gs.t);
+      for (const e of sorted) if (e.sub === "star") drawEnt(e, wd, gs.t);
 
       // celebration fireworks
       if (ph === "complete") {
@@ -1839,6 +1930,32 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       }
 
       stepEffects(gs, dt);
+
+      // big action cue banner (matches the coach's voice)
+      if (playing && gs.t < gs.cueUntil) {
+        const rem = gs.cueUntil - gs.t;
+        const appear = clamp((1.5 - rem) / 0.15, 0, 1);
+        const fade = clamp(rem / 0.3, 0, 1);
+        ctx!.save();
+        ctx!.globalAlpha = fade;
+        ctx!.translate(W / 2, 140);
+        const sc = (0.7 + 0.3 * appear) * (1 + Math.sin(gs.t * 9) * 0.035);
+        ctx!.scale(sc, sc);
+        ctx!.font = "900 42px system-ui, sans-serif";
+        ctx!.textAlign = "center";
+        ctx!.textBaseline = "middle";
+        const label = `${gs.cueIcon} ${gs.cueText}`;
+        const tw = ctx!.measureText(label).width;
+        rr(-tw / 2 - 28, -40, tw + 56, 80, 40);
+        ctx!.fillStyle = "rgba(255,255,255,0.94)";
+        ctx!.fill();
+        ctx!.lineWidth = 6;
+        ctx!.strokeStyle = "#ff9e40";
+        ctx!.stroke();
+        ctx!.fillStyle = "#c2410c";
+        ctx!.fillText(label, 0, 3);
+        ctx!.restore();
+      }
 
       // HUD sync (throttled)
       if (gs.t - lastHudPush.current > 0.15 || !playing) {

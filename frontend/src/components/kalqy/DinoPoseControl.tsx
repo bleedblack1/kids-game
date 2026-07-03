@@ -5,11 +5,21 @@ import { Camera, CameraOff, RotateCcw } from "lucide-react";
 // The game reads live control signals from a mutable ref every frame — no
 // React re-renders on the hot path.
 
+interface Baseline {
+  mirroredX: number; // 1 - shoulderCenter.x
+  shoulderY: number;
+  hipY: number;
+  torso: number; // hipY - shoulderY
+}
+
 export interface PoseSignals {
   present: boolean; // a person is detected
   fullBody: boolean; // head + shoulders + hips + knees visible
   inBox: boolean; // whole body inside the calibration box
   calibrated: boolean;
+  // Standing-pose reference captured during calibration. Lives here (not in
+  // component state) so it survives DinoPoseControl unmounting between levels.
+  baseline: Baseline | null;
   lean: -1 | 0 | 1; // -1 = lean left (as the child sees it)
   duck: boolean;
   handsUp: boolean;
@@ -22,6 +32,7 @@ export function createPoseSignals(): PoseSignals {
     fullBody: false,
     inBox: false,
     calibrated: false,
+    baseline: null,
     lean: 0,
     duck: false,
     handsUp: false,
@@ -73,13 +84,6 @@ const CONNECTIONS: [number, number][] = [
   [R_KNEE, R_ANKLE],
 ];
 
-interface Baseline {
-  mirroredX: number; // 1 - shoulderCenter.x
-  shoulderY: number;
-  hipY: number;
-  torso: number; // hipY - shoulderY
-}
-
 type LM = { x: number; y: number; visibility?: number };
 
 interface PoseResult {
@@ -122,6 +126,7 @@ export function DinoPoseControl({
     if (calibrating) {
       samplesRef.current = [];
       signalsRef.current.calibrated = false;
+      signalsRef.current.baseline = null;
     }
   }, [calibrating, signalsRef]);
 
@@ -130,7 +135,6 @@ export function DinoPoseControl({
     onCalibratedRef.current = onCalibrated;
   }, [onCalibrated]);
 
-  const baselineRef = useRef<Baseline | null>(null);
   const smoothRef = useRef<{ x: number; sy: number; hy: number } | null>(null);
   const jumpArmedRef = useRef(true);
   const lastActionRef = useRef("");
@@ -267,7 +271,7 @@ export function DinoPoseControl({
             }),
             { mirroredX: 0, shoulderY: 0, hipY: 0, torso: 0 },
           );
-          baselineRef.current = avg;
+          s.baseline = avg;
           s.calibrated = true;
           jumpArmedRef.current = true;
           onCalibratedRef.current?.();
@@ -275,7 +279,7 @@ export function DinoPoseControl({
       }
 
       // ---- gesture classification (only when calibrated + game active) ----
-      const base = baselineRef.current;
+      const base = s.baseline;
       if (!s.calibrated || !base || !activeRef.current) {
         setActionOnce("");
         return;
