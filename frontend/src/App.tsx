@@ -10,6 +10,7 @@ import { Leaderboard } from "@/components/kalqy/Leaderboard";
 import { VocabFaceQuiz } from "@/components/kalqy/VocabFaceQuiz";
 import { PointAndSpell } from "@/components/kalqy/PointAndSpell";
 import { DinoAdventureRun } from "@/components/kalqy/DinoAdventureRun";
+import { KalqyWorld3D } from "@/components/kalqy/KalqyWorld3D";
 import { getRole, setRole as saveRole, type Role } from "@/lib/roles";
 
 const SKILL_MAP: Record<string, keyof Pick<Stats, "balance" | "coordination" | "bodyAwareness">> = {
@@ -143,6 +144,25 @@ export function App() {
                 coordination: Math.min(100, p.coordination + 4),
                 bodyAwareness: Math.min(100, p.bodyAwareness + 3),
               }))
+            }
+          />
+        )}
+        {view === "kalqy-world" && (
+          <KalqyWorld3D
+            onBack={() => setView("dashboard")}
+            onComplete={({ stars, movements }) =>
+              setStats((p) => {
+                const next = {
+                  ...p,
+                  gamesPlayed: p.gamesPlayed + 1,
+                  stars: p.stars + Math.min(5, stars),
+                };
+                for (const [movement, count] of Object.entries(movements)) {
+                  const skill = SKILL_MAP[movement];
+                  if (skill) next[skill] = Math.min(100, next[skill] + Math.min(10, count));
+                }
+                return next;
+              })
             }
           />
         )}

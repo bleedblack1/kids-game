@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Gamepad2,
+  Globe,
   Sticker as StickerIcon,
   Trophy,
   Settings,
@@ -21,6 +22,7 @@ export type View =
   | "vocab-face"
   | "point-spell"
   | "dino-adventure"
+  | "kalqy-world"
   | "sticker-book"
   | "leaderboard";
 
@@ -110,6 +112,13 @@ export function Sidebar({ view, onNavigate, role, onRoleChange }: SidebarProps) 
             onClick={() => onNavigate("leaderboard")}
           />
         )}
+
+        <NavItem
+          icon={<Globe className="h-4 w-4" />}
+          label="Kalqy 3D World 🌍"
+          active={view === "kalqy-world"}
+          onClick={() => onNavigate("kalqy-world")}
+        />
 
         <button
           onClick={() => setGamesOpen((v) => !v)}

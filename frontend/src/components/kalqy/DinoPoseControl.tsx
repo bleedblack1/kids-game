@@ -24,6 +24,9 @@ export interface PoseSignals {
   duck: boolean;
   handsUp: boolean;
   jumpCount: number; // increments once per detected real-life jump
+  // Which side a single raised hand points to (as the child sees it):
+  // -1 left, 0 straight up / centre, 1 right, null when no hand is raised.
+  pick: -1 | 0 | 1 | null;
 }
 
 export function createPoseSignals(): PoseSignals {
@@ -37,6 +40,7 @@ export function createPoseSignals(): PoseSignals {
     duck: false,
     handsUp: false,
     jumpCount: 0,
+    pick: null,
   };
 }
 
@@ -188,11 +192,32 @@ export function DinoPoseControl({
         s.lean = 0;
         s.duck = false;
         s.handsUp = false;
+        s.pick = null;
         smoothRef.current = null;
         setActionOnce("");
         return;
       }
       s.present = true;
+
+      // Hand-pick: a single raised wrist pointing left / centre / right.
+      // Works without calibration — uses only this frame's wrists + shoulders.
+      {
+        const lw = lms[L_WRIST];
+        const rw = lms[R_WRIST];
+        const shY = (lms[L_SHOULDER].y + lms[R_SHOULDER].y) / 2;
+        const shX = (lms[L_SHOULDER].x + lms[R_SHOULDER].x) / 2;
+        const raised: LM[] = [];
+        if (vis(lw) > 0.5 && lw.y < shY - 0.04) raised.push(lw);
+        if (vis(rw) > 0.5 && rw.y < shY - 0.04) raised.push(rw);
+        if (!raised.length) {
+          s.pick = null;
+        } else {
+          const w =
+            raised.length === 1 ? raised[0] : raised[0].y < raised[1].y ? raised[0] : raised[1];
+          const dx = shX - w.x; // horizontal offset, mirrored to how the child sees it
+          s.pick = dx > 0.09 ? 1 : dx < -0.09 ? -1 : 0;
+        }
+      }
 
       const fullBody = BODY_KEYS.every((i) => vis(lms[i]) > 0.5);
       s.fullBody = fullBody;

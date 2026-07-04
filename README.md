@@ -52,6 +52,7 @@ Then open **http://localhost:3001** — in production mode this single port serv
 
 | Game | Age group | How you play |
 | --- | --- | --- |
+| Kalqy 3D World 🌍 | All bands 3–6 | Full-body 3D runner (Three.js + MediaPipe pose): step left/right to change lanes, jump logs, squat under branches, answer learning gates |
 | Animal Walk Adventure | Preschool 3–4 | Jump, crawl and squat — pose detection |
 | Finger Gesture Quiz | Preschool 3–4 | Hold up 1–4 fingers to answer |
 | Endless Runner | Preschool 3–4 | Control the runner with gestures |
