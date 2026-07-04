@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Gamepad2,
   Globe,
+  Plane,
   Sticker as StickerIcon,
   Trophy,
   Settings,
@@ -23,6 +24,7 @@ export type View =
   | "point-spell"
   | "dino-adventure"
   | "kalqy-world"
+  | "sky-quest"
   | "sticker-book"
   | "leaderboard";
 
@@ -118,6 +120,12 @@ export function Sidebar({ view, onNavigate, role, onRoleChange }: SidebarProps) 
           label="Kalqy 3D World 🌍"
           active={view === "kalqy-world"}
           onClick={() => onNavigate("kalqy-world")}
+        />
+        <NavItem
+          icon={<Plane className="h-4 w-4" />}
+          label="Kalqy Sky Quest 🎈"
+          active={view === "sky-quest"}
+          onClick={() => onNavigate("sky-quest")}
         />
 
         <button
