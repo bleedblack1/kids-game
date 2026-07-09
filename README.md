@@ -15,12 +15,17 @@ kids-game/
 
 ##  How to run (development)
 
+> **Node.js 20.19+ or 22+ is required** (the project ships an `.nvmrc` pinned to 22).
+> If you use nvm: `nvm install 22 && nvm use 22`.
+
 **Step 1 — install (first time only):**
 
 ```bash
 npm install
-npm run install:all
 ```
+
+This one command installs the root, backend, and frontend dependencies (a `postinstall`
+hook installs the sub-packages for you).
 
 **Step 2 — start everything:**
 
@@ -80,6 +85,6 @@ Data is stored as JSON files in `backend/data/` (created automatically, not comm
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 20.19+ or 22+ (see `.nvmrc`)
 - A webcam (the games are camera-controlled)
 - Chrome or Edge recommended
