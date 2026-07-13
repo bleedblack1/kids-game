@@ -12,7 +12,23 @@ import { PointAndSpell } from "@/components/kalqy/PointAndSpell";
 import { DinoAdventureRun } from "@/components/kalqy/DinoAdventureRun";
 import { KalqyWorld3D } from "@/components/kalqy/KalqyWorld3D";
 import { KalqySkyQuest } from "@/components/kalqy/KalqySkyQuest";
+import { FeedbackButton } from "@/components/kalqy/FeedbackButton";
+import { FeedbackViewer } from "@/components/kalqy/FeedbackViewer";
 import { getRole, setRole as saveRole, type Role } from "@/lib/roles";
+
+// Views where the child is actively playing a game — the feedback widget is
+// hidden here so nothing distracts from (or overlaps) gameplay.
+const GAME_VIEWS: View[] = [
+  "game",
+  "finger-quiz",
+  "endless-runner",
+  "math-adventure",
+  "vocab-face",
+  "point-spell",
+  "dino-adventure",
+  "kalqy-world",
+  "sky-quest",
+];
 
 const SKILL_MAP: Record<string, keyof Pick<Stats, "balance" | "coordination" | "bodyAwareness">> = {
   Jump: "balance",
@@ -57,8 +73,11 @@ export function App() {
     });
   };
 
+  const inGame = GAME_VIEWS.includes(view);
+
   return (
     <div className="flex min-h-screen w-full bg-background">
+      {!inGame && <FeedbackButton />}
       <Sidebar view={view} onNavigate={setView} role={role} onRoleChange={changeRole} />
       <main className="flex-1 overflow-x-hidden">
         {view === "dashboard" && (
@@ -188,6 +207,7 @@ export function App() {
         )}
         {view === "sticker-book" && <StickerBook onBack={() => setView("dashboard")} />}
         {view === "leaderboard" && <Leaderboard onBack={() => setView("dashboard")} />}
+        {view === "feedback" && <FeedbackViewer onBack={() => setView("dashboard")} />}
       </main>
     </div>
   );

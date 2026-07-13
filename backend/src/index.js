@@ -49,6 +49,54 @@ app.get("/api/events", (_req, res) => {
   res.json({ events: readCollection("events", []) });
 });
 
+// Parent feedback on the games (fire-and-forget from the frontend). Fields
+// mirror the short Kalqy Parent Feedback survey — all are optional, but at
+// least one must be present.
+app.post("/api/feedback", (req, res) => {
+  const { rating, enjoyed, aspects, recommend, improve, email } = req.body ?? {};
+
+  const numericRating = Number(rating);
+  const hasRating = Number.isFinite(numericRating) && numericRating >= 1 && numericRating <= 5;
+
+  const numericRecommend = Number(recommend);
+  const hasRecommend =
+    recommend !== null &&
+    recommend !== undefined &&
+    Number.isFinite(numericRecommend) &&
+    numericRecommend >= 0 &&
+    numericRecommend <= 10;
+
+  const enjoyedText = typeof enjoyed === "string" ? enjoyed.trim() : "";
+  const improveText = typeof improve === "string" ? improve.trim() : "";
+  const emailText = typeof email === "string" ? email.trim() : "";
+  const aspectList = Array.isArray(aspects)
+    ? aspects.filter((a) => typeof a === "string").slice(0, 20)
+    : [];
+
+  const hasAnything =
+    hasRating || hasRecommend || enjoyedText !== "" || improveText !== "" || aspectList.length > 0;
+  if (!hasAnything) {
+    return res.status(400).json({ error: "please answer at least one question" });
+  }
+
+  const feedback = readCollection("feedback", []);
+  feedback.push({
+    rating: hasRating ? numericRating : null,
+    enjoyed: enjoyedText || null,
+    aspects: aspectList,
+    recommend: hasRecommend ? numericRecommend : null,
+    improve: improveText,
+    email: emailText,
+    ts: Date.now(),
+  });
+  writeCollection("feedback", feedback.slice(-MAX_EVENTS));
+  res.status(201).json({ ok: true });
+});
+
+app.get("/api/feedback", (_req, res) => {
+  res.json({ feedback: readCollection("feedback", []) });
+});
+
 // Player progress snapshots (coins, stickers, streak).
 app.get("/api/progress/:playerId", (req, res) => {
   const all = readCollection("progress", {});

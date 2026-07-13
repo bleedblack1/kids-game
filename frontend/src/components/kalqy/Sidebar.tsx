@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   Sparkles,
+  MessageSquareHeart,
 } from "lucide-react";
 import type { Role } from "@/lib/roles";
 import { RoleSwitcher } from "./RoleSwitcher";
@@ -26,7 +27,8 @@ export type View =
   | "kalqy-world"
   | "sky-quest"
   | "sticker-book"
-  | "leaderboard";
+  | "leaderboard"
+  | "feedback";
 
 interface SidebarProps {
   view: View;
@@ -198,10 +200,17 @@ export function Sidebar({ view, onNavigate, role, onRoleChange }: SidebarProps) 
 
       <div className="mt-auto flex flex-col gap-2">
         <RoleSwitcher role={role} onChange={onRoleChange} />
-        <div className="rounded-2xl bg-secondary p-3 text-xs text-secondary-foreground">
-          <div className="font-extrabold">NEP 2020</div>
-          <div className="opacity-75">Foundational Stage aligned</div>
-        </div>
+        <button
+          onClick={() => onNavigate("feedback")}
+          className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold transition-all ${
+            view === "feedback"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-sidebar-foreground hover:bg-sidebar-accent"
+          }`}
+        >
+          <MessageSquareHeart className="h-4 w-4" />
+          View Feedback
+        </button>
       </div>
     </aside>
   );

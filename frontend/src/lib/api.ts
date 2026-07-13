@@ -55,6 +55,44 @@ export function postEvent(event: {
   }
 }
 
+export interface FeedbackPayload {
+  rating: number; // overall satisfaction, 1–5 (0 = not answered)
+  enjoyed: string; // "Did your child enjoy learning while playing?"
+  aspects: string[]; // what the child enjoyed most (multi-select)
+  recommend: number | null; // NPS 0–10
+  improve: string; // free-text "What can we improve?"
+  email: string; // optional follow-up email
+}
+
+// A stored feedback entry as returned by the backend.
+export interface FeedbackEntry {
+  rating: number | null;
+  enjoyed: string | null;
+  aspects: string[];
+  recommend: number | null;
+  improve: string;
+  email: string;
+  ts: number;
+}
+
+export async function fetchFeedback(): Promise<FeedbackEntry[] | null> {
+  const data = await getJson<{ feedback: FeedbackEntry[] }>("/api/feedback");
+  return data?.feedback ?? null;
+}
+
+// Fire-and-forget: parent feedback never blocks the UI.
+export function postFeedback(feedback: FeedbackPayload) {
+  try {
+    void fetch("/api/feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(feedback),
+    }).catch(() => {});
+  } catch {
+    // offline — ignore
+  }
+}
+
 export function postProgress(
   playerId: string,
   progress: {
