@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ArrowLeft, Home, Pause, Play, RotateCw, Star, Volume2, VolumeX } from "lucide-react";
 import { DinoPoseControl, createPoseSignals, type PoseStatus } from "./DinoPoseControl";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 import { audioInit, isMuted, say, setMuted, sfx, startMusic, stopMusic } from "@/lib/dino-audio";
 import { logEvent } from "@/lib/analytics";
 
@@ -2005,9 +2006,9 @@ export function KalqyWorld3D({ onBack, onComplete }: KalqyWorld3DProps) {
         <div className="absolute inset-0 z-40 overflow-y-auto bg-black/55 backdrop-blur-sm">
           <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 py-10">
             <div className="w-full rounded-3xl bg-card p-6 shadow-2xl">
+              <GameResultBanner won={finalStats.correct > 0} className="mb-6" />
               <div className="text-center">
-                <div className="text-5xl">🏆</div>
-                <h2 className="mt-1 text-3xl font-black text-foreground">
+                <h2 className="mt-1 text-2xl font-black text-foreground">
                   Level {level} complete!
                 </h2>
                 {level === 1 && (

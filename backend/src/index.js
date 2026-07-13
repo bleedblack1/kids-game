@@ -53,7 +53,8 @@ app.get("/api/events", (_req, res) => {
 // mirror the short Kalqy Parent Feedback survey — all are optional, but at
 // least one must be present.
 app.post("/api/feedback", (req, res) => {
-  const { rating, enjoyed, aspects, recommend, improve, email } = req.body ?? {};
+  const { parentName, contact, childAge, rating, enjoyed, aspects, recommend, refer, improve } =
+    req.body ?? {};
 
   const numericRating = Number(rating);
   const hasRating = Number.isFinite(numericRating) && numericRating >= 1 && numericRating <= 5;
@@ -66,27 +67,41 @@ app.post("/api/feedback", (req, res) => {
     numericRecommend >= 0 &&
     numericRecommend <= 10;
 
+  const parentNameText = typeof parentName === "string" ? parentName.trim().slice(0, 120) : "";
+  const contactText = typeof contact === "string" ? contact.trim().slice(0, 120) : "";
+  const childAgeText = typeof childAge === "string" ? childAge.trim().slice(0, 40) : "";
+  const referText = typeof refer === "string" ? refer.trim().slice(0, 10) : "";
   const enjoyedText = typeof enjoyed === "string" ? enjoyed.trim() : "";
   const improveText = typeof improve === "string" ? improve.trim() : "";
-  const emailText = typeof email === "string" ? email.trim() : "";
   const aspectList = Array.isArray(aspects)
     ? aspects.filter((a) => typeof a === "string").slice(0, 20)
     : [];
 
   const hasAnything =
-    hasRating || hasRecommend || enjoyedText !== "" || improveText !== "" || aspectList.length > 0;
+    hasRating ||
+    hasRecommend ||
+    parentNameText !== "" ||
+    contactText !== "" ||
+    childAgeText !== "" ||
+    referText !== "" ||
+    enjoyedText !== "" ||
+    improveText !== "" ||
+    aspectList.length > 0;
   if (!hasAnything) {
     return res.status(400).json({ error: "please answer at least one question" });
   }
 
   const feedback = readCollection("feedback", []);
   feedback.push({
+    parentName: parentNameText,
+    contact: contactText,
+    childAge: childAgeText,
     rating: hasRating ? numericRating : null,
     enjoyed: enjoyedText || null,
     aspects: aspectList,
     recommend: hasRecommend ? numericRecommend : null,
+    refer: referText,
     improve: improveText,
-    email: emailText,
     ts: Date.now(),
   });
   writeCollection("feedback", feedback.slice(-MAX_EVENTS));

@@ -160,12 +160,15 @@ function FeedbackTable({ onBack }: { onBack: () => void }) {
               <tr className="bg-secondary/40 text-left">
                 <Th>#</Th>
                 <Th>Date</Th>
+                <Th>Parent</Th>
+                <Th>Contact</Th>
+                <Th>Child Age</Th>
                 <Th>Rating</Th>
                 <Th>Enjoyed</Th>
                 <Th>Recommend</Th>
+                <Th>Refer</Th>
                 <Th>Enjoyed Most</Th>
                 <Th>Improve</Th>
-                <Th>Email</Th>
               </tr>
             </thead>
             <tbody>
@@ -176,23 +179,15 @@ function FeedbackTable({ onBack }: { onBack: () => void }) {
                 >
                   <Td>{i + 1}</Td>
                   <Td className="whitespace-nowrap">{formatDate(e.ts)}</Td>
+                  <Td>{e.parentName || "—"}</Td>
+                  <Td>{e.contact ? <ContactLink contact={e.contact} /> : "—"}</Td>
+                  <Td className="whitespace-nowrap">{e.childAge || "—"}</Td>
                   <Td>{e.rating != null ? `${e.rating}/5 ⭐` : "—"}</Td>
                   <Td>{e.enjoyed || "—"}</Td>
                   <Td>{e.recommend != null ? `${e.recommend}/10` : "—"}</Td>
+                  <Td>{e.refer || "—"}</Td>
                   <Td>{e.aspects?.length ? e.aspects.join(", ") : "—"}</Td>
                   <Td className="max-w-[260px]">{e.improve || "—"}</Td>
-                  <Td>
-                    {e.email ? (
-                      <a
-                        href={`mailto:${e.email}`}
-                        className="text-primary hover:underline"
-                      >
-                        {e.email}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -213,6 +208,17 @@ function Th({ children }: { children: React.ReactNode }) {
 
 function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <td className={`px-4 py-3 font-semibold text-foreground ${className}`}>{children}</td>;
+}
+
+// Render a contact as a clickable mailto: (email) or tel: (phone) link.
+function ContactLink({ contact }: { contact: string }) {
+  const isEmail = contact.includes("@");
+  const href = isEmail ? `mailto:${contact}` : `tel:${contact.replace(/[^\d+]/g, "")}`;
+  return (
+    <a href={href} className="whitespace-nowrap text-primary hover:underline">
+      {contact}
+    </a>
+  );
 }
 
 function formatDate(ts: number): string {
@@ -237,12 +243,15 @@ function downloadExcel(rows: FeedbackEntry[]) {
   const headers = [
     "#",
     "Date",
+    "Parent",
+    "Contact",
+    "Child Age",
     "Rating (1-5)",
     "Enjoyed",
     "Recommend (0-10)",
+    "Refer to Others",
     "Enjoyed Most",
     "Improve",
-    "Email",
   ];
 
   const matrix: (string | number)[][] = [
@@ -250,12 +259,15 @@ function downloadExcel(rows: FeedbackEntry[]) {
     ...rows.map((e, i) => [
       i + 1,
       formatDate(e.ts),
+      e.parentName ?? "",
+      e.contact ?? "",
+      e.childAge ?? "",
       e.rating ?? "",
       e.enjoyed ?? "",
       e.recommend ?? "",
+      e.refer ?? "",
       (e.aspects ?? []).join("; "),
       e.improve ?? "",
-      e.email ?? "",
     ]),
   ];
 

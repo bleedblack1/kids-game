@@ -4,6 +4,7 @@ import { ArrowLeft, Home, Pause, Play, RotateCw, Star, Volume2, VolumeX } from "
 import { DinoPoseControl, createPoseSignals, type PoseStatus } from "./DinoPoseControl";
 import { audioInit, isMuted, say, setMuted, sfx, startMusic, stopMusic } from "@/lib/dino-audio";
 import { logEvent } from "@/lib/analytics";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 
 // KALQY Sky Quest — a full-body Three.js FLYING game.
 //
@@ -1878,11 +1879,9 @@ export function KalqySkyQuest({ onBack, onComplete }: KalqySkyQuestProps) {
         <div className="absolute inset-0 z-40 overflow-y-auto bg-black/55 backdrop-blur-sm">
           <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 py-10">
             <div className="w-full rounded-3xl bg-card p-6 shadow-2xl">
+              <GameResultBanner won={finalStats.correct > 0} className="mb-6" />
               <div className="text-center">
-                <div className="text-5xl">🏅</div>
-                <h2 className="mt-1 text-3xl font-black text-foreground">
-                  You flew the whole sky!
-                </h2>
+                <div className="text-sm font-bold text-foreground">You flew the whole sky!</div>
                 <div className="mt-2 flex items-center justify-center gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star

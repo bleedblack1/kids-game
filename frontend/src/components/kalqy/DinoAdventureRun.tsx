@@ -15,6 +15,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { DinoPoseControl, createPoseSignals, type PoseStatus } from "./DinoPoseControl";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 import { audioInit, isMuted, say, setMuted, sfx, startMusic, stopMusic } from "@/lib/dino-audio";
 import {
   DINO_BADGES,
@@ -2011,6 +2012,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
   const wd = WORLDS[worldIdx];
   const showHud = phase === "playing" || phase === "paused" || phase === "lost";
   const finishedAll = worldIdx >= WORLDS.length - 1;
+  const won = phase === "complete";
   const camVisible = camOn && phase !== "menu" && phase !== "complete" && phase !== "gameover";
 
   const retrySameWorld = useCallback(() => {
@@ -2441,10 +2443,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       {phase === "complete" && (
         <div className="absolute inset-0 z-40 flex items-center justify-center overflow-y-auto">
           <div className="mx-3 my-4 w-full max-w-md rounded-3xl border-4 border-card bg-card/95 p-6 text-center shadow-2xl backdrop-blur">
-            <div className="text-5xl">🎉</div>
-            <h2 className="mt-1 text-3xl font-black text-foreground">
-              {finishedAll ? "Adventure Complete!" : "Level Complete!"}
-            </h2>
+            <GameResultBanner won={won} className="mb-4" />
             <div className="mt-1 text-sm font-bold text-muted-foreground">
               {wd.emoji} {wd.name} finished!
             </div>
@@ -2533,8 +2532,7 @@ export function DinoAdventureRun({ onBack, onComplete }: DinoAdventureRunProps) 
       {phase === "gameover" && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm">
           <div className="mx-4 max-w-md rounded-3xl border-4 border-card bg-card p-6 text-center shadow-2xl">
-            <div className="text-5xl">🦕💫</div>
-            <h2 className="mt-2 text-3xl font-black text-foreground">Good Try!</h2>
+            <GameResultBanner won={false} className="mb-4" />
             <p className="mt-1 text-sm font-bold text-muted-foreground">
               You keep everything you collected — let's run again!
             </p>

@@ -3,6 +3,7 @@ import { ArrowLeft, Camera, RotateCcw, Star } from "lucide-react";
 import { logEvent } from "@/lib/analytics";
 import { addCoins, tickStreak, unlockSticker } from "@/lib/rewards";
 import { fetchWords } from "@/lib/api";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 
 interface Props {
   onBack: () => void;
@@ -538,6 +539,9 @@ export function PointAndSpell({ onBack, onComplete }: Props) {
     : 0;
   const heldTileObj = heldTile !== null ? tiles.find((t) => t.id === heldTile) : null;
   const paused = status === "ready" && !handVisible && mode !== "end";
+  // Child wins by spelling at least half of the session's words correctly.
+  const totalWords = sessionWords.length || WORDS_PER_SESSION;
+  const won = stars >= Math.ceil(totalWords / 2);
 
   return (
     <div className="relative min-h-full overflow-hidden bg-gradient-to-b from-sunshine/25 via-background to-sky/30">
@@ -757,8 +761,7 @@ export function PointAndSpell({ onBack, onComplete }: Props) {
           {mode === "end" && (
             <div className="flex h-full flex-1 items-center justify-center">
               <div className="animate-pop text-center">
-                <div className="animate-bounce-soft mb-4 text-7xl">🏆</div>
-                <h1 className="mb-2 text-4xl font-black text-foreground md:text-6xl">All done!</h1>
+                <GameResultBanner won={won} className="mb-6" />
                 <p className="mb-6 text-lg font-bold text-foreground/80">
                   You spelled {stars} word{stars === 1 ? "" : "s"}! ⭐
                 </p>

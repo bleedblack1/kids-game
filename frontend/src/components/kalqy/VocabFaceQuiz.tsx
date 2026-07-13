@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { logEvent } from "@/lib/analytics";
 import { addCoins, unlockSticker, tickStreak } from "@/lib/rewards";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 
 /* ------------------------- Content ------------------------- */
 
@@ -544,6 +545,7 @@ export function VocabFaceQuiz({ onBack, onComplete }: Props) {
   }
 
   if (phase === "over") {
+    const won = correct >= Math.ceil(ROUNDS / 2);
     return (
       <div className="min-h-screen bg-gradient-to-br from-sky/30 via-background to-sunshine/30 p-6">
         <button
@@ -553,9 +555,7 @@ export function VocabFaceQuiz({ onBack, onComplete }: Props) {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <div className="mx-auto max-w-2xl rounded-3xl border-4 border-card bg-card p-8 text-center shadow-xl">
-          <div className="mb-2 text-6xl">🏆</div>
-          <h1 className="mb-1 text-3xl font-black">Great job!</h1>
-          <p className="mb-6 text-muted-foreground">You finished the Vocab Face Quiz.</p>
+          <GameResultBanner won={won} className="mb-6" />
           <div className="mb-6 grid grid-cols-3 gap-3 text-center">
             <Stat label="Correct" value={`${correct}/${ROUNDS}`} />
             <Stat label="Coins" value={`${coins}`} />

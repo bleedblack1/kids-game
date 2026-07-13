@@ -17,30 +17,38 @@ const ASPECT_OPTIONS = [
   "Playing like a game",
 ];
 
+const AGE_OPTIONS = ["3–5 years", "5–7 years"];
+
 export function FeedbackButton() {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const [parentName, setParentName] = useState("");
+  const [contact, setContact] = useState("");
+  const [childAge, setChildAge] = useState("");
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [enjoyed, setEnjoyed] = useState("");
   const [aspects, setAspects] = useState<string[]>([]);
   const [recommend, setRecommend] = useState<number | null>(null);
+  const [refer, setRefer] = useState("");
   const [improve, setImprove] = useState("");
-  const [email, setEmail] = useState("");
 
   const close = () => {
     setOpen(false);
     // Reset after the modal closes so the parent sees a fresh form next time.
     setTimeout(() => {
       setSent(false);
+      setParentName("");
+      setContact("");
+      setChildAge("");
       setRating(0);
       setHover(0);
       setEnjoyed("");
       setAspects([]);
       setRecommend(null);
+      setRefer("");
       setImprove("");
-      setEmail("");
     }, 200);
   };
 
@@ -48,16 +56,27 @@ export function FeedbackButton() {
     setAspects((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
 
   const canSend =
-    rating > 0 || enjoyed !== "" || aspects.length > 0 || recommend !== null || improve.trim() !== "";
+    parentName.trim() !== "" ||
+    contact.trim() !== "" ||
+    childAge !== "" ||
+    rating > 0 ||
+    enjoyed !== "" ||
+    aspects.length > 0 ||
+    recommend !== null ||
+    refer !== "" ||
+    improve.trim() !== "";
 
   const submit = () => {
     postFeedback({
+      parentName: parentName.trim(),
+      contact: contact.trim(),
+      childAge,
       rating,
       enjoyed,
       aspects,
       recommend,
+      refer,
       improve: improve.trim(),
-      email: email.trim(),
     });
     setSent(true);
     setTimeout(close, 1400);
@@ -110,6 +129,37 @@ export function FeedbackButton() {
               </div>
             ) : (
               <div className="flex flex-col gap-5">
+                {/* Parent details */}
+                <Field label="Your name">
+                  <input
+                    type="text"
+                    value={parentName}
+                    onChange={(e) => setParentName(e.target.value)}
+                    placeholder="Parent's name"
+                    className="w-full rounded-2xl border border-border bg-card p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </Field>
+
+                <Field label="Contact (email or phone)">
+                  <input
+                    type="text"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="you@example.com or +91 98765 43210"
+                    className="w-full rounded-2xl border border-border bg-card p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </Field>
+
+                <Field label="Child's age">
+                  <div className="flex flex-wrap gap-2">
+                    {AGE_OPTIONS.map((o) => (
+                      <Chip key={o} active={childAge === o} onClick={() => setChildAge(o)}>
+                        {o}
+                      </Chip>
+                    ))}
+                  </div>
+                </Field>
+
                 {/* Overall satisfaction */}
                 <Field label="How satisfied are you with Kalqy?">
                   <div className="flex gap-1.5">
@@ -179,6 +229,17 @@ export function FeedbackButton() {
                   </div>
                 </Field>
 
+                {/* Refer to others */}
+                <Field label="Would you refer Kalqy to other parents?">
+                  <div className="flex gap-2">
+                    {["Yes", "No"].map((o) => (
+                      <Chip key={o} active={refer === o} onClick={() => setRefer(o)}>
+                        {o}
+                      </Chip>
+                    ))}
+                  </div>
+                </Field>
+
                 {/* Improvement */}
                 <Field label="What can we improve?">
                   <textarea
@@ -187,17 +248,6 @@ export function FeedbackButton() {
                     placeholder="Anything you'd love to see, or that could be better…"
                     rows={3}
                     className="w-full resize-none rounded-2xl border border-border bg-card p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </Field>
-
-                {/* Optional email */}
-                <Field label="Email (optional — if you'd like us to follow up)">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-border bg-card p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
                   />
                 </Field>
 

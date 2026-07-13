@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Camera, RotateCcw, Star, Volume2 } from "lucide-react";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 
 interface Props {
   onBack: () => void;
@@ -561,8 +562,10 @@ export function FingerGestureQuiz({ onBack, onComplete }: Props) {
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <div className="animate-pop text-center">
-              <div className="mb-4 text-7xl">🏆</div>
-              <h1 className="mb-2 text-4xl font-black text-foreground md:text-6xl">All done!</h1>
+              <GameResultBanner
+                won={score >= Math.ceil(totalQuestions / 2)}
+                className="mb-6"
+              />
               <p className="mb-6 text-lg font-bold text-foreground/80">
                 You scored {score} out of {totalQuestions}.
               </p>

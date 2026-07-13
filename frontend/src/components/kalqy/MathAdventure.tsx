@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 import {
   ArrowLeft,
   Camera,
@@ -1204,11 +1205,7 @@ export function MathAdventure({ onBack, onComplete }: Props) {
         {phase === "end" && (
           <div className="flex flex-1 items-center justify-center">
             <div className="animate-pop w-full max-w-xl rounded-3xl border-4 border-card bg-card/95 p-8 text-center shadow-2xl backdrop-blur">
-              <div className="mb-3 text-7xl">🏆</div>
-              <h1 className="text-4xl font-black text-foreground md:text-5xl">You Did It!</h1>
-              <p className="mt-2 text-base font-bold text-muted-foreground">
-                You're a Math Star! ⭐
-              </p>
+              <GameResultBanner won={correct >= Math.ceil(totalQuestions / 2)} className="mb-6" />
               <div className="my-6 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Stat label="Correct" value={`${correct}/${totalQuestions}`} icon="✅" />
                 <Stat label="Coins" value={String(coins)} icon="🪙" />

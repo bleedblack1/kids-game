@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { RunnerGestureControl } from "./RunnerGestureControl";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 
 interface EndlessRunnerProps {
   onBack: () => void;
@@ -631,8 +632,7 @@ export function EndlessRunner({ onBack, onComplete }: EndlessRunnerProps) {
       {phase === "over" && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/50 backdrop-blur-sm">
           <div className="mx-4 max-w-md rounded-3xl border-4 border-card bg-card p-6 text-center shadow-2xl">
-            <div className="text-5xl">🏁</div>
-            <h2 className="mt-2 text-3xl font-black text-foreground">Run Complete!</h2>
+            <GameResultBanner won={coins >= 5 || score >= 200} className="mb-4" />
             <div className="my-4 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-secondary p-3">
                 <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">

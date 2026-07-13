@@ -56,22 +56,28 @@ export function postEvent(event: {
 }
 
 export interface FeedbackPayload {
+  parentName: string; // parent's name
+  contact: string; // email or phone
+  childAge: string; // "3–5 years" | "5–7 years" | ""
   rating: number; // overall satisfaction, 1–5 (0 = not answered)
   enjoyed: string; // "Did your child enjoy learning while playing?"
   aspects: string[]; // what the child enjoyed most (multi-select)
   recommend: number | null; // NPS 0–10
+  refer: string; // "would you refer to others?" — "Yes" | "No" | ""
   improve: string; // free-text "What can we improve?"
-  email: string; // optional follow-up email
 }
 
 // A stored feedback entry as returned by the backend.
 export interface FeedbackEntry {
+  parentName: string;
+  contact: string;
+  childAge: string;
   rating: number | null;
   enjoyed: string | null;
   aspects: string[];
   recommend: number | null;
+  refer: string;
   improve: string;
-  email: string;
   ts: number;
 }
 

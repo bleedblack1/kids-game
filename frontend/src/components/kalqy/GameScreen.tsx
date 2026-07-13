@@ -4,6 +4,7 @@ import { CameraPanel, type CameraMode } from "./CameraPanel";
 import { PowerMeter } from "./PowerMeter";
 import { logEvent } from "@/lib/analytics";
 import { addCoins, scoreJumpHeight, unlockSticker, tickStreak } from "@/lib/rewards";
+import { GameResultBanner } from "@/components/kalqy/GameResultBanner";
 
 export interface GameResult {
   stars: number;
@@ -259,6 +260,7 @@ export function GameScreen({ onBack, onComplete }: GameScreenProps) {
           {phase === "end" && (
             <EndScreen
               coins={coins}
+              won={coins > 0}
               onPlayAgain={start}
               onBack={() => {
                 window.speechSynthesis?.cancel();
@@ -384,18 +386,18 @@ function AnimalCard({
 
 function EndScreen({
   coins,
+  won,
   onPlayAgain,
   onBack,
 }: {
   coins: number;
+  won: boolean;
   onPlayAgain: () => void;
   onBack: () => void;
 }) {
   return (
     <div className="animate-pop text-center">
-      <div className="mb-4 text-7xl">🎉</div>
-      <h1 className="mb-2 text-4xl font-black md:text-6xl">You did it!</h1>
-      <p className="mb-6 text-lg font-bold text-foreground/80">Jungle superstar unlocked! 🌴</p>
+      <GameResultBanner won={won} className="mb-6" />
 
       <div className="mb-8 flex items-center justify-center gap-3">
         <div className="rounded-3xl bg-sunshine px-6 py-4 shadow-lg">
