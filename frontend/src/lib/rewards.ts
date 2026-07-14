@@ -3,9 +3,7 @@
 
 import { logEvent, type GameId } from "./analytics";
 import { postProgress } from "./api";
-
-// Single-profile demo: all progress syncs to the backend under one id.
-const PLAYER_ID = "local-kid";
+import { currentPlayerId } from "./device";
 
 export interface Sticker {
   id: string;
@@ -104,12 +102,18 @@ function save(s: RewardState) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, JSON.stringify(s));
   listeners.forEach((l) => l());
-  postProgress(PLAYER_ID, {
-    coins: s.coins,
-    stickers: s.stickers,
-    streakDays: s.streakDays,
-    lastPlayed: s.lastPlayed,
-  });
+  // Sync to the backend under this device's real player id. Until the device
+  // is registered, currentPlayerId() is null and progress stays local (the
+  // offline queue + next save will carry it once a playerId exists).
+  const playerId = currentPlayerId();
+  if (playerId) {
+    postProgress(playerId, {
+      coins: s.coins,
+      stickers: s.stickers,
+      streakDays: s.streakDays,
+      lastPlayed: s.lastPlayed,
+    });
+  }
 }
 
 let cache: RewardState | null = null;

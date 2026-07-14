@@ -24,34 +24,40 @@ kids-game/
 npm install
 ```
 
-This one command installs the root, backend, and frontend dependencies (a `postinstall`
+This installs the root, backend, and frontend dependencies (a `postinstall`
 hook installs the sub-packages for you).
 
-**Step 2 — start everything:**
+**Step 2 — configure the database (Neon) + Redis:**
+
+```bash
+cp backend/.env.example backend/.env   # fill in Neon DATABASE_URL/DIRECT_URL, REDIS_URL, JWT_*
+npm --prefix backend run prisma:generate
+npm --prefix backend run prisma:migrate   # create tables on Neon
+npm --prefix backend run db:seed          # seed words + admin/teacher accounts
+```
+
+**Step 3 — start everything:**
 
 ```bash
 npm run dev
 ```
 
-**Step 3 — open the game:**
+**Step 4 — open the game:**
 
 👉 **http://localhost:8080** ← this is the only URL you need
-
-(Port 3001 is just the API that the game talks to in the background — you never open it in a browser during development.)
+(the NestJS API runs on :3001, with Swagger docs at http://localhost:3001/api/docs)
 
 ##  How to run (production)
 
+Frontend and API deploy separately: the **React PWA** to a static host (Vercel)
+and the **NestJS API** to a persistent Node host (Railway/Render/Fly), backed by
+**Neon** Postgres + Redis. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §6.
+
 ```bash
-npm run build   # bundles the frontend
-npm start       # one Node.js server hosts game + API together
+npm run build                       # builds backend (nest) + frontend (vite)
+npm --prefix backend run prisma:deploy   # apply migrations on deploy
+npm start                           # start the API (serve the PWA from your static host)
 ```
-
-Then open **http://localhost:3001** — in production mode this single port serves everything.
-
-| Mode | Command | Open in browser |
-| --- | --- | --- |
-| Development | `npm run dev` | http://localhost:8080 |
-| Production | `npm run build && npm start` | http://localhost:3001 |
 
 ##  The games
 
@@ -65,23 +71,33 @@ Then open **http://localhost:3001** — in production mode this single port serv
 | Vocab Face Quiz | LKG 4–5 | Vocabulary quiz |
 | Point & Spell | UKG 5–6 | Point at objects, drag letters to spell — fully camera-controlled |
 
-##  Backend API (Node.js + Express)
+##  Backend API (NestJS + Prisma + Neon + Redis)
+
+The backend is a layered NestJS app (Controller → Service → Prisma) with JWT +
+RBAC auth, versioned at `/api/v1`. Full route table and setup in
+[`backend/README.md`](backend/README.md). Highlights:
 
 | Method | Route | What it does |
 | --- | --- | --- |
-| GET | `/api/health` | Check the server is alive |
-| GET | `/api/words` | Vocabulary for Point & Spell |
-| GET | `/api/leaderboard` | Class roster for the Teacher view |
-| POST | `/api/events` | Games send analytics events here |
-| GET | `/api/progress/:playerId` | Load a player's coins/stickers/streak |
-| POST | `/api/progress/:playerId` | Save a player's coins/stickers/streak |
+| GET | `/api/v1/health` | DB + Redis liveness |
+| POST | `/api/v1/auth/login` · `/register` · `/refresh` · `/device` | JWT auth + child device tokens |
+| GET | `/api/v1/words` | Vocabulary (from the DB) |
+| POST | `/api/v1/events` | Gameplay telemetry ingest |
+| GET/POST | `/api/v1/progress/:playerId` | Load/save a player's progress |
+| GET | `/api/v1/leaderboard?classId=` | Class roster **derived from real data** |
+| GET | `/api/v1/ai/insights/:playerId` | AI progress insight |
 
-Data is stored as JSON files in `backend/data/` (created automatically, not committed to git). To use a real database later, replace `backend/src/store.js` — nothing else needs to change.
+**No mock data:** the leaderboard is aggregated from real `Progress` + `Event`
+rows; vocabulary lives in a `Word` table. Data is stored in **PostgreSQL on
+Neon** via Prisma, with **Redis** for sessions, caching, and rate limiting.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full design.
 
 ##  Tech stack
 
-- **Frontend:** React 19, Vite, Tailwind CSS 4, MediaPipe Hands, TensorFlow.js
-- **Backend:** Node.js, Express (2 dependencies, no build step)
+- **Frontend:** React 19 + TypeScript (PWA), Vite, Tailwind CSS,
+  Three.js (3D games), MediaPipe Tasks-Vision, TensorFlow.js
+- **Backend:** NestJS, Prisma ORM, JWT/RBAC, AI insights (Anthropic + fallback)
+- **Database:** PostgreSQL (Neon) + Redis
 
 ## Requirements
 

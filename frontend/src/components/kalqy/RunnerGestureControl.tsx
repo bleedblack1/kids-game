@@ -18,23 +18,6 @@ type Gesture = "left" | "right" | "jump" | "slide" | "none";
 
 const COOLDOWN_MS = 320;
 
-// Count extended fingers (index, middle, ring, pinky). Thumb excluded.
-function countFingers(lm: { x: number; y: number }[]): number {
-  if (!lm || lm.length < 21) return 0;
-  const tips = [8, 12, 16, 20];
-  const pips = [6, 10, 14, 18];
-  let c = 0;
-  for (let i = 0; i < 4; i++) {
-    if (lm[tips[i]].y < lm[pips[i]].y - 0.02) c++;
-  }
-  return c;
-}
-
-function thumbExtended(lm: { x: number; y: number }[]): boolean {
-  // Thumb tip 4 vs IP 3: extended if horizontally far from MCP (2)
-  return Math.abs(lm[4].x - lm[2].x) > 0.08;
-}
-
 // Classify purely by hand position in the (non-mirrored) raw video frame.
 // The on-screen video is CSS-mirrored, so what the user sees on the LEFT of
 // the screen is on the RIGHT of the raw frame (wristX > 0.5) — that's the

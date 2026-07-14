@@ -111,7 +111,6 @@ const DEFAULTS: DinoProgress = {
 };
 
 let cache: DinoProgress | null = null;
-const listeners = new Set<() => void>();
 
 function load(): DinoProgress {
   if (typeof window === "undefined") return { ...DEFAULTS };
@@ -125,17 +124,11 @@ function load(): DinoProgress {
 function save(p: DinoProgress) {
   cache = p;
   if (typeof window !== "undefined") window.localStorage.setItem(KEY, JSON.stringify(p));
-  listeners.forEach((l) => l());
 }
 
 export function getDinoProgress(): DinoProgress {
   if (!cache) cache = load();
   return cache;
-}
-
-export function subscribeDinoProgress(fn: () => void) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
 }
 
 export function updateDinoProgress(patch: Partial<DinoProgress>): DinoProgress {

@@ -30,7 +30,6 @@ export interface AnalyticsEvent {
 }
 
 const KEY = "kalqy.events.v1";
-const listeners = new Set<() => void>();
 
 function load(): AnalyticsEvent[] {
   if (typeof window === "undefined") return [];
@@ -65,7 +64,6 @@ export function logEvent(e: Omit<AnalyticsEvent, "id" | "ts"> & { ts?: number })
   const list = [...all(), evt];
   cache = list;
   save(list);
-  listeners.forEach((l) => l());
   postEvent({
     game: evt.game,
     type: evt.type,
@@ -74,21 +72,6 @@ export function logEvent(e: Omit<AnalyticsEvent, "id" | "ts"> & { ts?: number })
     label: evt.label,
   });
   return evt;
-}
-
-export function subscribe(fn: () => void) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
-
-export function getEvents(): AnalyticsEvent[] {
-  return all();
-}
-
-export function clearEvents() {
-  cache = [];
-  save([]);
-  listeners.forEach((l) => l());
 }
 
 // ---------- Selectors ----------

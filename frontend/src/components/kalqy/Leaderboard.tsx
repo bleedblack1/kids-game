@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Trophy, Flame, Sticker as StickerIcon } from "lucide-react";
 import { CLASS_ROSTER, type RosterKid } from "@/lib/roles";
-import { fetchLeaderboard } from "@/lib/api";
 
 interface Props {
   onBack: () => void;
@@ -11,18 +10,7 @@ type SortKey = "coins" | "stickers" | "streak";
 
 export function Leaderboard({ onBack }: Props) {
   const [sort, setSort] = useState<SortKey>("coins");
-  // Roster comes from the backend; the bundled list is the offline fallback.
-  const [roster, setRoster] = useState<RosterKid[]>(CLASS_ROSTER);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchLeaderboard().then((r) => {
-      if (!cancelled && r) setRoster(r);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const roster: RosterKid[] = CLASS_ROSTER;
 
   const rows = [...roster].sort((a, b) => b[sort] - a[sort]);
 
@@ -37,7 +25,7 @@ export function Leaderboard({ onBack }: Props) {
 
       <h1 className="mb-1 text-3xl font-black md:text-4xl">🏆 Top Explorers of the Week</h1>
       <p className="mb-6 text-sm font-semibold text-muted-foreground">
-        Class of Miss Priya · 8 explorers
+        Class of Miss Priya · {roster.length} explorers
       </p>
 
       <div className="mb-4 flex gap-2">

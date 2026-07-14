@@ -1,17 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Trophy,
-  Star,
-  Activity,
-  Zap,
-  Brain,
-  Play,
-  Coins,
-  Flame,
-  Heart,
-  BookOpen,
-  Sigma,
-} from "lucide-react";
+import { Trophy, Star, Play, Coins, Flame } from "lucide-react";
 import type { Role } from "@/lib/roles";
 import { CLASS_ROSTER } from "@/lib/roles";
 import { getRewards, subscribeRewards, STICKERS } from "@/lib/rewards";

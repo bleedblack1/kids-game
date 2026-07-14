@@ -1,0 +1,231 @@
+// Kalqy data model — PostgreSQL on Neon.
+// `directUrl` is the non-pooled Neon connection Prisma uses for migrations;
+// `url` is the pooled (PgBouncer) connection the running app uses.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access (RBAC)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  TEACHER
+  PARENT
+}
+
+/// A human account that logs in (teacher, parent, or admin). Children never
+/// have User rows — they play under device-scoped Player identities.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(TEACHER)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  classes      Class[]   @relation("TeacherClasses")
+  guardianOf   Player[]  @relation("ParentPlayers")
+  consents     ParentalConsent[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([role])
+}
+
+// ---------------------------------------------------------------------------
+// Org structure
+// ---------------------------------------------------------------------------
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  classes   Class[]
+  createdAt DateTime @default(now())
+}
+
+model Class {
+  id        String   @id @default(cuid())
+  name      String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId  String
+  teacher   User?    @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: SetNull)
+  teacherId String?
+  players   Player[]
+  createdAt DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([teacherId])
+}
+
+// ---------------------------------------------------------------------------
+// Children (privacy-minimal — no PII beyond a display name + avatar)
+// ---------------------------------------------------------------------------
+
+enum AgeBand {
+  BAND_3_4 // preschool
+  BAND_4_5 // LKG
+  BAND_5_6 // UKG
+}
+
+model Player {
+  id        String    @id @default(cuid())
+  deviceId  String    @unique // opaque UUID minted on the child's device
+  name      String
+  avatar    String
+  ageBand   AgeBand
+
+  class     Class?    @relation(fields: [classId], references: [id], onDelete: SetNull)
+  classId   String?
+  parent    User?     @relation("ParentPlayers", fields: [parentId], references: [id], onDelete: SetNull)
+  parentId  String?
+
+  progress  Progress?
+  events    Event[]
+  insights  Insight[]
+  consent   ParentalConsent?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([classId])
+  @@index([parentId])
+}
+
+/// Verifiable parental consent + retention policy (COPPA / GDPR-K). Without an
+/// active consent row a Player's events are not retained past the session.
+model ParentalConsent {
+  id          String    @id @default(cuid())
+  player      Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId    String    @unique
+  grantedBy   User      @relation(fields: [grantedById], references: [id], onDelete: Cascade)
+  grantedById String
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  // Delete the child's gameplay data after this date unless renewed.
+  retainUntil DateTime
+
+  @@index([grantedById])
+}
+
+// ---------------------------------------------------------------------------
+// Gameplay state & telemetry
+// ---------------------------------------------------------------------------
+
+/// Live progress snapshot — one row per player (replaces progress.json).
+model Progress {
+  id         String    @id @default(cuid())
+  player     Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId   String    @unique
+  coins      Int       @default(0)
+  stickers   String[]  @default([])
+  streakDays Int       @default(0)
+  lastPlayed DateTime?
+  updatedAt  DateTime  @updatedAt
+}
+
+/// A closed registry of event types, so analytics stay queryable instead of
+/// drifting into free-text `type` strings.
+enum EventType {
+  SESSION_START
+  SESSION_END
+  ANSWER_CORRECT
+  ANSWER_WRONG
+  LEVEL_COMPLETE
+  GESTURE_JUMP
+  GESTURE_SQUAT
+  GESTURE_LANE
+  WORD_SPELLED
+  REWARD_EARNED
+}
+
+/// The skills Kalqy games train. `topSkill` on the leaderboard is a GROUP BY
+/// over these — never a hardcoded value.
+enum Skill {
+  VOCABULARY
+  NUMERACY
+  COORDINATION
+  BALANCE
+  BODY_AWARENESS
+  MEMORY
+}
+
+/// Every gameplay signal (replaces events.json). Camera frames never reach
+/// this table — only derived, privacy-safe events do.
+model Event {
+  id        String     @id @default(cuid())
+  player    Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId  String
+  game      String
+  type      EventType
+  skill     Skill?
+  value     Float?
+  label     String?
+  createdAt DateTime   @default(now())
+
+  @@index([playerId, createdAt])
+  @@index([game, type])
+  @@index([skill])
+}
+
+// ---------------------------------------------------------------------------
+// Content (replaces the hardcoded WORD_BANK array)
+// ---------------------------------------------------------------------------
+
+model Word {
+  id        String   @id @default(cuid())
+  word      String   @unique
+  emoji     String
+  ageBand   AgeBand
+  active    Boolean  @default(true)
+  // Set when the AI content-generation endpoint proposed this word.
+  aiGenerated Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([ageBand, active])
+}
+
+// ---------------------------------------------------------------------------
+// Parent feedback (replaces feedback.json)
+// ---------------------------------------------------------------------------
+
+model Feedback {
+  id         String   @id @default(cuid())
+  parentName String?
+  contact    String?
+  childAge   String?
+  rating     Int?
+  enjoyed    String?
+  aspects    String[] @default([])
+  recommend  Int?
+  refer      String?
+  improve    String?
+  createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// AI-generated progress insights (cached — regenerated on new events)
+// ---------------------------------------------------------------------------
+
+model Insight {
+  id         String   @id @default(cuid())
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId   String
+  // Snapshot of the metrics the insight was computed from, for auditability.
+  summary    String
+  strengths  String[] @default([])
+  focusAreas String[] @default([])
+  generatedBy String  // "anthropic:claude-sonnet-5" | "rule-based"
+  createdAt  DateTime @default(now())
+
+  @@index([playerId, createdAt])
+}

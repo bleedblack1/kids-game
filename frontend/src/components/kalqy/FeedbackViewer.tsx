@@ -1,90 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  RefreshCw,
-  MessageSquareHeart,
-  Download,
-  Lock,
-} from "lucide-react";
+import { ArrowLeft, RefreshCw, MessageSquareHeart, Download } from "lucide-react";
 import { fetchFeedback, type FeedbackEntry } from "@/lib/api";
+import { authStore } from "@/lib/auth-store";
+import { LoginForm } from "@/components/kalqy/LoginForm";
 
 interface Props {
   onBack: () => void;
 }
 
-// Password gate for the feedback data. Kept intentionally simple — this is a
-// light guard for a demo, not real authentication.
-const FEEDBACK_PASSWORD = "kalqy@2026";
-
-// Feedback viewer, reached from the main dashboard. Access is password-gated;
-// once unlocked it shows the submissions in a table that can be exported to
-// Excel (CSV).
+// Feedback viewer, reached from the main dashboard. Access requires a real
+// admin login; once authenticated it shows the submissions in a table that can
+// be exported to Excel (CSV). The data itself is admin-only server-side.
 export function FeedbackViewer({ onBack }: Props) {
-  const [unlocked, setUnlocked] = useState(false);
+  const [authed, setAuthed] = useState(
+    () => authStore.isAuthenticated && authStore.principal?.role === "ADMIN",
+  );
 
-  if (!unlocked) {
-    return <PasswordGate onBack={onBack} onUnlock={() => setUnlocked(true)} />;
+  if (!authed) {
+    return (
+      <LoginForm
+        title="Feedback Access"
+        subtitle="Sign in as an admin to view parent feedback."
+        requiredRole="ADMIN"
+        onBack={onBack}
+        onSuccess={() => setAuthed(true)}
+      />
+    );
   }
   return <FeedbackTable onBack={onBack} />;
-}
-
-function PasswordGate({ onBack, onUnlock }: { onBack: () => void; onUnlock: () => void }) {
-  const [value, setValue] = useState("");
-  const [error, setError] = useState(false);
-
-  const submit = () => {
-    if (value === FEEDBACK_PASSWORD) {
-      onUnlock();
-    } else {
-      setError(true);
-    }
-  };
-
-  return (
-    <div className="mx-auto max-w-md px-4 py-6 md:px-8 md:py-10">
-      <button
-        onClick={onBack}
-        className="mb-4 flex items-center gap-2 rounded-2xl bg-card px-4 py-2 text-sm font-bold text-foreground shadow-sm transition-all hover:scale-105"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <div className="rounded-3xl border-2 border-border bg-card p-8 shadow-lg">
-        <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Lock className="h-7 w-7" />
-        </div>
-        <h1 className="text-2xl font-black text-foreground">Feedback Access</h1>
-        <p className="mb-6 mt-1 text-sm font-semibold text-muted-foreground">
-          Enter the password to view parent feedback.
-        </p>
-
-        <input
-          type="password"
-          value={value}
-          autoFocus
-          onChange={(e) => {
-            setValue(e.target.value);
-            setError(false);
-          }}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="Password"
-          className={`w-full rounded-2xl border-2 bg-background p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary ${
-            error ? "border-coral" : "border-border"
-          }`}
-        />
-        {error && (
-          <p className="mt-2 text-xs font-bold text-coral">Incorrect password. Try again.</p>
-        )}
-
-        <button
-          onClick={submit}
-          className="mt-4 w-full rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-all hover:brightness-105 active:scale-[0.99]"
-        >
-          Unlock
-        </button>
-      </div>
-    </div>
-  );
 }
 
 function FeedbackTable({ onBack }: { onBack: () => void }) {

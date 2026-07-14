@@ -15,6 +15,8 @@ import { KalqySkyQuest } from "@/components/kalqy/KalqySkyQuest";
 import { FeedbackButton } from "@/components/kalqy/FeedbackButton";
 import { FeedbackViewer } from "@/components/kalqy/FeedbackViewer";
 import { getRole, setRole as saveRole, type Role } from "@/lib/roles";
+import { ensureDevice } from "@/lib/session";
+import { restoreSession } from "@/lib/api";
 
 // Views where the child is actively playing a game — the feedback widget is
 // hidden here so nothing distracts from (or overlaps) gameplay.
@@ -50,6 +52,10 @@ export function App() {
 
   useEffect(() => {
     setRoleState(getRole());
+    // Register this device so gameplay telemetry + progress sync to the backend.
+    void ensureDevice();
+    // Restore a teacher/parent/admin session from a persisted refresh token.
+    void restoreSession();
   }, []);
 
   const changeRole = (r: Role) => {
