@@ -9,7 +9,6 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  Sparkles,
   MessageSquareHeart,
 } from "lucide-react";
 import type { Role } from "@/lib/roles";
@@ -71,27 +70,10 @@ export function Sidebar({ view, onNavigate, role, onRoleChange }: SidebarProps) 
 
   return (
     <aside className="hidden md:flex w-[260px] shrink-0 flex-col gap-2 border-r border-border bg-sidebar p-4">
-      <div className="flex items-center gap-2 px-2 pb-2">
-        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-xl font-black tracking-tight text-foreground">KALQY</div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Move · Play · Learn
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-1 mb-2 rounded-3xl bg-gradient-to-br from-sunshine to-coral p-3 text-foreground shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-background/70 text-2xl animate-bounce-soft">
-            🦊
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-extrabold">Hi, I'm Kalqy!</div>
-            <div className="truncate text-xs opacity-80">Ready to play?</div>
-          </div>
+      <div className="px-2 pb-2">
+        <img src="/kalqy-wordmark.png" alt="KALQY" className="w-full max-w-[190px]" />
+        <div className="mt-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Move · Play · Learn
         </div>
       </div>
 
