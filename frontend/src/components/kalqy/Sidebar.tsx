@@ -6,7 +6,6 @@ import {
   Plane,
   Sticker as StickerIcon,
   Trophy,
-  Settings,
   ChevronDown,
   ChevronRight,
   MessageSquareHeart,
@@ -177,7 +176,6 @@ export function Sidebar({ view, onNavigate, role, onRoleChange }: SidebarProps) 
           </div>
         )}
 
-        <NavItem icon={<Settings className="h-4 w-4" />} label="Settings" disabled />
       </nav>
 
       <div className="mt-auto flex flex-col gap-2">

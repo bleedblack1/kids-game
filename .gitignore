@@ -8,6 +8,9 @@ node_modules
 # Frontend build output
 frontend/dist
 
+# Architecture docs (kept local, not tracked)
+ARCHITECTURE.md
+
 # Backend runtime data (JSON store)
 backend/data/*.json
 

@@ -31,8 +31,9 @@ Render's free plan has no bundled Redis, so use Upstash (free tier).
 2. Render → **New → Blueprint** → connect the repo. Render reads `render.yaml`
    and proposes the `kalqy-backend` web service. Apply it.
    - (Or **New → Web Service** manually: Root Directory `backend`,
-     Build `npm install && npx prisma generate && npm run build`,
-     Start `npm run start:prod`, Health check `/api/v1/health`.)
+     Build `npm install --include=dev && npx prisma generate && npm run build`
+     (the `--include=dev` is required because `NODE_ENV=production` otherwise
+     skips the `nest` CLI), Start `npm run start:prod`, Health `/api/v1/health`.)
 3. In the service's **Environment** tab, set these (copy the values from your
    local `backend/.env`):
 
@@ -90,8 +91,8 @@ redeploy the backend.
 
 1. Open the Vercel URL → play a game → a child device auto-registers and
    progress/events sync to Neon.
-2. Dashboard → Feedback → sign in `admin@kalqy.app` / `kalqy@2026` → real
-   feedback + NPS loads from the backend.
+2. Dashboard → Feedback → sign in as `admin@kalqy.app` with your admin
+   password → real feedback + NPS loads from the backend.
 3. Backend health: `https://<render-url>/api/v1/health` → all `up`.
 
 ## Notes / caveats

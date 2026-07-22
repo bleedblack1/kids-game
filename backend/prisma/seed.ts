@@ -47,6 +47,11 @@ async function seedWords() {
 }
 
 async function seedAccounts() {
+  // Passwords come from env so real credentials never live in the repo. The
+  // defaults are safe placeholders meant to be changed after first login.
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!admin1';
+  const teacherPassword = process.env.SEED_TEACHER_PASSWORD ?? 'ChangeMe!teach1';
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@kalqy.app' },
     update: {},
@@ -54,7 +59,7 @@ async function seedAccounts() {
       email: 'admin@kalqy.app',
       name: 'Kalqy Admin',
       role: Role.ADMIN,
-      passwordHash: await argon2.hash('kalqy@2026'),
+      passwordHash: await argon2.hash(adminPassword),
     },
   });
   const teacher = await prisma.user.upsert({
@@ -64,10 +69,10 @@ async function seedAccounts() {
       email: 'teacher@kalqy.app',
       name: 'Ms. Rao',
       role: Role.TEACHER,
-      passwordHash: await argon2.hash('ChangeMe!teach1'),
+      passwordHash: await argon2.hash(teacherPassword),
     },
   });
-  console.log('✓ seeded admin + teacher accounts (change the passwords!)');
+  console.log('✓ seeded admin + teacher accounts (set SEED_ADMIN_PASSWORD to override)');
   return { admin, teacher };
 }
 
